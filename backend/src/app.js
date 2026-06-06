@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const authRoutes = require('./routes/auth.routes');
 const complaintRoutes = require('./routes/complaint.routes');
 const departmentRoutes = require('./routes/department.routes');
@@ -18,9 +17,6 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Serve local uploads folder statically for mock/fallback uploads
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Root Route
 app.get('/', (req, res) => {
