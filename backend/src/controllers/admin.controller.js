@@ -1,7 +1,6 @@
 const db = require('../config/db.config');
 const bcrypt = require('bcrypt');
 const { sendNotification } = require('../services/sns.service');
-const { logInfo, logError } = require('../services/cloudwatch.service');
 
 /**
  * Fetch all complaints with filters
@@ -43,7 +42,7 @@ exports.getAllComplaints = async (req, res) => {
     const complaints = await db.query(queryStr, params);
     return res.json(complaints);
   } catch (error) {
-    logError('Admin Fetch All Complaints Error', { error: error.message });
+    console.error('Admin Fetch All Complaints Error', { error: error.message });
     return res.status(500).json({ error: 'Server error while fetching complaints.' });
   }
 };
@@ -113,7 +112,7 @@ exports.assignComplaint = async (req, res) => {
       );
     }
 
-    logInfo('Admin Action - Assign Complaint', { complaint_id, department_id, priority });
+    console.log('Admin Action - Assign Complaint', { complaint_id, department_id, priority });
 
     // 5. Send SNS Alert to Student
     const studentUser = await db.query('SELECT name, email FROM Users WHERE id = ?', [complaint.student_id]);
@@ -137,7 +136,7 @@ exports.assignComplaint = async (req, res) => {
       complaint_id
     });
   } catch (error) {
-    logError('Admin Assign Complaint Error', { complaint_id, error: error.message });
+    console.error('Admin Assign Complaint Error', { complaint_id, error: error.message });
     return res.status(500).json({ error: 'Server error while assigning complaint.' });
   }
 };
@@ -178,7 +177,7 @@ exports.escalateComplaint = async (req, res) => {
       [complaint.student_id, `The priority of your complaint #${complaint_id} was updated to "${priority}".`]
     );
 
-    logInfo('Admin Action - Escalate Complaint Priority', { complaint_id, from: oldPriority, to: priority });
+    console.log('Admin Action - Escalate Complaint Priority', { complaint_id, from: oldPriority, to: priority });
 
     // Send SNS email update
     const studentUser = await db.query('SELECT name, email FROM Users WHERE id = ?', [complaint.student_id]);
@@ -202,7 +201,7 @@ exports.escalateComplaint = async (req, res) => {
       complaint_id
     });
   } catch (error) {
-    logError('Admin Escalate Complaint Error', { complaint_id, error: error.message });
+    console.error('Admin Escalate Complaint Error', { complaint_id, error: error.message });
     return res.status(500).json({ error: 'Server error while escalating complaint.' });
   }
 };
@@ -242,7 +241,7 @@ exports.closeComplaint = async (req, res) => {
       [complaint.student_id, `Your complaint #${complaint_id} has been officially closed by the administrator.`]
     );
 
-    logInfo('Admin Action - Close Complaint', { complaint_id, adminId });
+    console.log('Admin Action - Close Complaint', { complaint_id, adminId });
 
     // Send SNS email alert
     const studentUser = await db.query('SELECT name, email FROM Users WHERE id = ?', [complaint.student_id]);
@@ -266,7 +265,7 @@ exports.closeComplaint = async (req, res) => {
       complaint_id
     });
   } catch (error) {
-    logError('Admin Close Complaint Error', { complaint_id, error: error.message });
+    console.error('Admin Close Complaint Error', { complaint_id, error: error.message });
     return res.status(500).json({ error: 'Server error while closing complaint.' });
   }
 };
@@ -306,7 +305,7 @@ exports.getAnalytics = async (req, res) => {
       priorityCounts
     });
   } catch (error) {
-    logError('Admin Analytics Fetch Error', { error: error.message });
+    console.error('Admin Analytics Fetch Error', { error: error.message });
     return res.status(500).json({ error: 'Server error while retrieving analytics data.' });
   }
 };
@@ -337,7 +336,7 @@ exports.getUsers = async (req, res) => {
     const users = await db.query(sql, params);
     return res.json(users);
   } catch (error) {
-    logError('Admin Fetch Users Error', { error: error.message });
+    console.error('Admin Fetch Users Error', { error: error.message });
     return res.status(500).json({ error: 'Server error while fetching users.' });
   }
 };
@@ -375,14 +374,14 @@ exports.createRep = async (req, res) => {
       [name, email, passwordHash, 'Department Representative', department_id, phone || null]
     );
 
-    logInfo('Admin Created Department Representative', { email, departmentId: department_id, creator: req.user.id });
+    console.log('Admin Created Department Representative', { email, departmentId: department_id, creator: req.user.id });
 
     return res.status(201).json({
       message: 'Department Representative user created successfully.',
       userId: result.insertId
     });
   } catch (error) {
-    logError('Admin Create Representative Error', { email, error: error.message });
+    console.error('Admin Create Representative Error', { email, error: error.message });
     return res.status(500).json({ error: 'Server error while creating representative.' });
   }
 };
@@ -406,11 +405,11 @@ exports.deleteUser = async (req, res) => {
     }
 
     await db.query('DELETE FROM Users WHERE id = ?', [userId]);
-    logInfo('Admin Deleted User Account', { targetUserId: userId, actionBy: req.user.id });
+    console.log('Admin Deleted User Account', { targetUserId: userId, actionBy: req.user.id });
 
     return res.json({ message: 'User account deleted successfully.' });
   } catch (error) {
-    logError('Admin Delete User Error', { targetUserId: userId, error: error.message });
+    console.error('Admin Delete User Error', { targetUserId: userId, error: error.message });
     return res.status(500).json({ error: 'Server error while deleting user.' });
   }
 };
@@ -424,7 +423,7 @@ exports.getDepartments = async (req, res) => {
     const departments = await db.query('SELECT * FROM Departments ORDER BY name ASC');
     return res.json(departments);
   } catch (error) {
-    logError('Admin Fetch Departments Error', { error: error.message });
+    console.error('Admin Fetch Departments Error', { error: error.message });
     return res.status(500).json({ error: 'Server error while fetching departments.' });
   }
 };
@@ -447,7 +446,7 @@ exports.createDepartment = async (req, res) => {
     }
 
     const result = await db.query('INSERT INTO Departments (name) VALUES (?)', [name]);
-    logInfo('Admin Created Department', { departmentName: name, creator: req.user.id });
+    console.log('Admin Created Department', { departmentName: name, creator: req.user.id });
 
     return res.status(201).json({
       message: 'Department created successfully.',
@@ -455,7 +454,7 @@ exports.createDepartment = async (req, res) => {
       name
     });
   } catch (error) {
-    logError('Admin Create Department Error', { name, error: error.message });
+    console.error('Admin Create Department Error', { name, error: error.message });
     return res.status(500).json({ error: 'Server error while creating department.' });
   }
 };

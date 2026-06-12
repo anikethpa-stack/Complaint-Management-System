@@ -1,7 +1,6 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db.config');
-const { logInfo, logError } = require('../services/cloudwatch.service');
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_123456789';
@@ -35,14 +34,14 @@ exports.register = async (req, res) => {
       [name, email, passwordHash, 'Student', phone || null]
     );
 
-    logInfo('User Registration Successful', { email, role: 'Student', userId: result.insertId });
+    console.log('User Registration Successful', { email, role: 'Student', userId: result.insertId });
 
     return res.status(201).json({
       message: 'Student registration completed successfully.',
       userId: result.insertId
     });
   } catch (error) {
-    logError('User Registration Error', { email, error: error.message });
+    console.error('User Registration Error', { email, error: error.message });
     return res.status(500).json({ error: 'Server error during user registration.' });
   }
 };
@@ -66,7 +65,7 @@ exports.login = async (req, res) => {
     );
 
     if (users.length === 0) {
-      logError('Authentication Failure - User Not Found', { email });
+      console.error('Authentication Failure - User Not Found', { email });
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
@@ -75,7 +74,7 @@ exports.login = async (req, res) => {
     // Verify password hash
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
-      logError('Authentication Failure - Incorrect Password', { email });
+      console.error('Authentication Failure - Incorrect Password', { email });
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
@@ -92,7 +91,7 @@ exports.login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    logInfo('User Login Successful', { email, role: user.role, userId: user.id });
+    console.log('User Login Successful', { email, role: user.role, userId: user.id });
 
     return res.json({
       message: 'Authentication successful.',
@@ -106,7 +105,7 @@ exports.login = async (req, res) => {
       }
     });
   } catch (error) {
-    logError('Authentication Server Error', { email, error: error.message });
+    console.error('Authentication Server Error', { email, error: error.message });
     return res.status(500).json({ error: 'Server error during login authentication.' });
   }
 };

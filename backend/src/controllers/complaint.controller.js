@@ -1,7 +1,6 @@
 const db = require('../config/db.config');
 const { uploadToS3 } = require('../services/s3.service');
 const { sendNotification } = require('../services/sns.service');
-const { logInfo, logError } = require('../services/cloudwatch.service');
 
 /**
  * Submit a new complaint
@@ -21,9 +20,9 @@ exports.createComplaint = async (req, res) => {
   try {
     // 1. Upload evidence file to S3 if attached
     if (req.file) {
-      logInfo('File upload request received', { filename: req.file.originalname, studentId });
+      console.log('File upload request received', { filename: req.file.originalname, studentId });
       evidenceUrl = await uploadToS3(req.file);
-      logInfo('File uploaded to S3 successfully', { evidenceUrl, studentId });
+      console.log('File uploaded to S3 successfully', { evidenceUrl, studentId });
     }
 
     // 2. Insert complaint into MySQL Database
@@ -46,7 +45,7 @@ exports.createComplaint = async (req, res) => {
       [studentId, `Your complaint #${complaintId} "${title}" has been successfully submitted.`]
     );
 
-    logInfo('Complaint Registered Successfully', { complaintId, studentId, priority: complaintPriority });
+    console.log('Complaint Registered Successfully', { complaintId, studentId, priority: complaintPriority });
 
     // 4. Send SNS Email notification
     const subject = `New Complaint Registered: #${complaintId}`;
@@ -70,7 +69,7 @@ exports.createComplaint = async (req, res) => {
       evidenceUrl
     });
   } catch (error) {
-    logError('Complaint Creation Error', { studentId, error: error.message });
+    console.error('Complaint Creation Error', { studentId, error: error.message });
     return res.status(500).json({ error: 'Server error while submitting complaint.' });
   }
 };
@@ -95,7 +94,7 @@ exports.getStudentComplaints = async (req, res) => {
 
     return res.json(complaints);
   } catch (error) {
-    logError('Fetch Student Complaints Error', { studentId, error: error.message });
+    console.error('Fetch Student Complaints Error', { studentId, error: error.message });
     return res.status(500).json({ error: 'Server error while fetching complaints.' });
   }
 };
@@ -152,7 +151,7 @@ exports.getComplaintById = async (req, res) => {
       updates
     });
   } catch (error) {
-    logError('Fetch Complaint Details Error', { complaintId, userId, error: error.message });
+    console.error('Fetch Complaint Details Error', { complaintId, userId, error: error.message });
     return res.status(500).json({ error: 'Server error while retrieving complaint details.' });
   }
 };

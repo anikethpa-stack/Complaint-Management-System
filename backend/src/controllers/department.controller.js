@@ -1,6 +1,5 @@
 const db = require('../config/db.config');
 const { sendNotification } = require('../services/sns.service');
-const { logInfo, logError } = require('../services/cloudwatch.service');
 
 /**
  * Fetch complaints assigned to the representative's department
@@ -26,7 +25,7 @@ exports.getDepartmentComplaints = async (req, res) => {
 
     return res.json(complaints);
   } catch (error) {
-    logError('Fetch Department Complaints Error', { departmentId, error: error.message });
+    console.error('Fetch Department Complaints Error', { departmentId, error: error.message });
     return res.status(500).json({ error: 'Server error while fetching department complaints.' });
   }
 };
@@ -94,7 +93,7 @@ exports.updateComplaintStatus = async (req, res) => {
       ]
     );
 
-    logInfo('Complaint Status Updated by Representative', { 
+    console.log('Complaint Status Updated by Representative', { 
       complaintId, 
       repId, 
       from: originalStatus, 
@@ -124,7 +123,7 @@ exports.updateComplaintStatus = async (req, res) => {
       complaintId
     });
   } catch (error) {
-    logError('Update Complaint Status Error', { complaintId, repId, error: error.message });
+    console.error('Update Complaint Status Error', { complaintId, repId, error: error.message });
     return res.status(500).json({ error: 'Server error while updating complaint status.' });
   }
 };

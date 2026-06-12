@@ -1,34 +1,99 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-
+# =========================
 # Dependencies
+# =========================
 node_modules/
 
-# Environment configurations
+# =========================
+# Environment Variables
+# =========================
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Production Build Directories
+# =========================
+# Logs
+# =========================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# Build Folders
+# =========================
 dist/
-dist-ssr/
 build/
 
-# Local Fallback File Uploads (evidence docs)
-backend/uploads/
-uploads/
+# React/Vite
+frontend/dist/
 
-# Editor / System Files
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# =========================
+# Runtime Data
+# =========================
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# =========================
+# Coverage
+# =========================
+coverage/
+
+# =========================
+# OS Files
+# =========================
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# =========================
+# VS Code
+# =========================
+.vscode/settings.json
+.vscode/launch.json
+
+# =========================
+# JetBrains IDEs
+# =========================
+.idea/
+
+# =========================
+# Temporary Files
+# =========================
+tmp/
+temp/
+*.tmp
+
+# =========================
+# Uploads (if stored locally)
+# =========================
+uploads/
+backend/uploads/
+
+# =========================
+# AWS Secrets
+# =========================
+aws-credentials.json
+secrets.json
+
+# =========================
+# Cache
+# =========================
+.cache/
+.parcel-cache/
+
+# =========================
+# Generated Reports
+# =========================
+*.report.html
+
+# =========================
+# Database Dumps
+# =========================
+*.sql.gz
+*.dump
+*.bak

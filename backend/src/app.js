@@ -4,7 +4,7 @@ const authRoutes = require('./routes/auth.routes');
 const complaintRoutes = require('./routes/complaint.routes');
 const departmentRoutes = require('./routes/department.routes');
 const adminRoutes = require('./routes/admin.routes');
-const { logError } = require('./services/cloudwatch.service');
+
 
 const app = express();
 
@@ -17,6 +17,10 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const path = require('path');
+// Serve local uploads folder statically for mock/fallback uploads
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Root Route
 app.get('/', (req, res) => {
@@ -34,7 +38,7 @@ app.use('/api/admin', adminRoutes);
 
 // Global Error Handler Middleware
 app.use((err, req, res, next) => {
-  logError('Unhandled Application Error', { 
+  console.error('Unhandled Application Error', { 
     message: err.message, 
     path: req.path, 
     method: req.method 

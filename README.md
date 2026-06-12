@@ -1,6 +1,6 @@
 # Student Grievance & Complaint Management System
 
-A secured, cloud-integrated Student Grievance and Complaint Management System designed for colleges and universities. The application features distinct portals for **Students**, **Department Representatives**, and **Administrators**, and integrates directly with AWS services for file storage (S3), email alerts (SNS), and application monitoring (CloudWatch).
+A secured, cloud-integrated Student Grievance and Complaint Management System designed for colleges and universities. The application features distinct portals for **Students**, **Department Representatives**, and **Administrators**, and integrates directly with AWS services for file storage (S3) and email alerts (SNS).
 
 ---
 
@@ -8,7 +8,7 @@ A secured, cloud-integrated Student Grievance and Complaint Management System de
 
 The project is structured around a **Three-Tier Architecture**:
 1. **Presentation Tier (React.js)**: A responsive Single Page Application (SPA) styled using Bootstrap and custom glassmorphism components. It uses Axios for API requests, automatically appending JWT tokens to headers via interceptors.
-2. **Application Tier (Node.js & Express.js)**: A secured REST API which coordinates user registrations, files validation, JWT token operations, database SQL queries, and directs interactions to Amazon S3, SNS, and CloudWatch.
+2. **Application Tier (Node.js & Express.js)**: A secured REST API which coordinates user registrations, files validation, JWT token operations, database SQL queries, and directs interactions to Amazon S3 and SNS.
 3. **Data Tier (MySQL on Amazon RDS)**: Stably manages relational data including user authentication details, departmental roles, ticket history logs, and notifications.
 
 ```
@@ -41,7 +41,7 @@ Complaint-Management-System/
 │   ├── src/
 │   │   ├── config/
 │   │   │   ├── db.config.js          # MySQL pool
-│   │   │   └── aws.config.js         # AWS S3, SNS, CloudWatch SDK v3
+│   │   │   └── aws.config.js         # AWS S3, SNS SDK v3
 │   │   ├── controllers/
 │   │   │   ├── auth.controller.js    # Sign-up, Sign-in
 │   │   │   ├── complaint.controller.js # Student ticket creations & history
@@ -57,8 +57,7 @@ Complaint-Management-System/
 │   │   │   └── admin.routes.js
 │   │   ├── services/
 │   │   │   ├── s3.service.js         # Upload buffers to AWS S3
-│   │   │   ├── sns.service.js        # Publish status messages to SNS ARN
-│   │   │   └── cloudwatch.service.js # Centralized logger to CloudWatch stream
+│   │   │   └── sns.service.js        # Publish status messages to SNS ARN
 │   │   ├── app.js                    # Express app declarations
 │   │   └── server.js                 # Entry listener
 │   ├── .env.example                  # Environment template
@@ -132,7 +131,6 @@ AWS_SECRET_ACCESS_KEY=your_aws_secret_key
 # AWS Provisioned Resources (Configure to match your manual setup)
 AWS_S3_BUCKET_NAME=student-grievance-evidence-bucket
 AWS_SNS_TOPIC_ARN=arn:aws:sns:us-east-1:123456789012:student-grievance-notifications
-AWS_CLOUDWATCH_LOG_GROUP=student-grievance-app-logs
 ```
 
 ---
@@ -174,23 +172,6 @@ Configure the IAM Policy attached to the IAM User or EC2 Instance Profile using 
 }
 ```
 
-### Amazon CloudWatch Logs Policy Statement
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "logs:CreateLogStream",
-                "logs:PutLogEvents",
-                "logs:DescribeLogStreams"
-            ],
-            "Resource": "arn:aws:logs:us-east-1:123456789012:log-group:student-grievance-app-logs:*"
-        }
-    ]
-}
-```
 
 ---
 
