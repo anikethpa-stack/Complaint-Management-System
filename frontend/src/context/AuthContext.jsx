@@ -40,6 +40,46 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
+   * Log in with Google
+   */
+  const loginWithGoogle = async (credential) => {
+    try {
+      const response = await api.post('/auth/google-login', { credential });
+      const { token: jwtToken, user: userData } = response.data;
+      
+      localStorage.setItem('token', jwtToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      setUser(userData);
+      setToken(jwtToken);
+      return { success: true, user: userData };
+    } catch (error) {
+      const message = error.response?.data?.error || 'Google login failed. Try again.';
+      return { success: false, error: message };
+    }
+  };
+
+  /**
+   * Update student academic profile
+   */
+  const updateProfile = async (profileData) => {
+    try {
+      const response = await api.put('/auth/update-profile', profileData);
+      const { token: jwtToken, user: userData } = response.data;
+      
+      localStorage.setItem('token', jwtToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      setUser(userData);
+      setToken(jwtToken);
+      return { success: true, user: userData };
+    } catch (error) {
+      const message = error.response?.data?.error || 'Profile update failed. Try again.';
+      return { success: false, error: message };
+    }
+  };
+
+  /**
    * Register a new student
    */
   const registerStudent = async (name, email, password, phone) => {
@@ -63,7 +103,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, registerStudent, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, updateProfile, registerStudent, logout }}>
       {children}
     </AuthContext.Provider>
   );

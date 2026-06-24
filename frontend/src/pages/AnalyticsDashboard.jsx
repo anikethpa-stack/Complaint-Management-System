@@ -156,8 +156,8 @@ const AnalyticsDashboard = () => {
                         style={{ 
                           height: `${Math.max(percentHeight, 10)}px`, 
                           width: '100%', 
-                          background: 'linear-gradient(to top, #6366f1, #a855f7)',
-                          boxShadow: '0 0 15px rgba(168, 85, 247, 0.4)'
+                          background: 'linear-gradient(to top, var(--color-primary), var(--color-secondary))',
+                          boxShadow: '0 0 15px var(--glow-color)'
                         }}
                       ></div>
                       

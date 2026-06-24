@@ -1,5 +1,5 @@
 const db = require('../config/db.config');
-const { uploadToS3 } = require('../services/s3.service');
+const { uploadToS3, generatePresignedUrl } = require('../services/s3.service');
 const { sendNotification } = require('../services/sns.service');
 
 /**
@@ -63,10 +63,15 @@ exports.createComplaint = async (req, res) => {
     // Send async and don't block response
     sendNotification(subject, emailBody);
 
+    let clientEvidenceUrl = null;
+    if (evidenceUrl) {
+      clientEvidenceUrl = await generatePresignedUrl(evidenceUrl);
+    }
+
     return res.status(201).json({
       message: 'Complaint submitted successfully.',
       complaintId,
-      evidenceUrl
+      evidenceUrl: clientEvidenceUrl
     });
   } catch (error) {
     console.error('Complaint Creation Error', { studentId, error: error.message });
@@ -91,6 +96,13 @@ exports.getStudentComplaints = async (req, res) => {
        ORDER BY c.created_at DESC`,
       [studentId]
     );
+
+    // Generate pre-signed URL for each complaint's evidence_url if it exists
+    for (const complaint of complaints) {
+      if (complaint.evidence_url) {
+        complaint.evidence_url = await generatePresignedUrl(complaint.evidence_url);
+      }
+    }
 
     return res.json(complaints);
   } catch (error) {
@@ -145,6 +157,10 @@ exports.getComplaintById = async (req, res) => {
        ORDER BY cu.created_at ASC`,
       [complaintId]
     );
+
+    if (complaint.evidence_url) {
+      complaint.evidence_url = await generatePresignedUrl(complaint.evidence_url);
+    }
 
     return res.json({
       complaint,

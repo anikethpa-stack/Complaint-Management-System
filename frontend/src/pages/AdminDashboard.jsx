@@ -17,6 +17,7 @@ const AdminDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
+  const [collegeFilter, setCollegeFilter] = useState('');
 
   // Rep register form values
   const [repName, setRepName] = useState('');
@@ -129,8 +130,12 @@ const AdminDashboard = () => {
     const matchesStatus = statusFilter === '' || c.status === statusFilter;
     const matchesPriority = priorityFilter === '' || c.priority === priorityFilter;
     const matchesDept = deptFilter === '' || c.department_id === parseInt(deptFilter, 10);
-    return matchesStatus && matchesPriority && matchesDept;
+    const matchesCollege = collegeFilter === '' || c.student_college === collegeFilter;
+    return matchesStatus && matchesPriority && matchesDept && matchesCollege;
   });
+
+  // Get unique colleges from complaints dataset dynamically
+  const collegesList = Array.from(new Set(complaints.map(c => c.student_college).filter(Boolean)));
 
   const getMetric = (status) => complaints.filter(c => c.status === status).length;
 
@@ -212,7 +217,7 @@ const AdminDashboard = () => {
 
               {/* Filters row */}
               <div className="row g-3 mb-4">
-                <div className="col-6 col-md-4">
+                <div className="col-6 col-md-3">
                   <label className="form-label text-muted fs-8 text-uppercase">Filter Status</label>
                   <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                     <option value="">All Statuses</option>
@@ -223,7 +228,7 @@ const AdminDashboard = () => {
                     <option value="Closed">Closed</option>
                   </select>
                 </div>
-                <div className="col-6 col-md-4">
+                <div className="col-6 col-md-3">
                   <label className="form-label text-muted fs-8 text-uppercase">Filter Priority</label>
                   <select className="form-select" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
                     <option value="">All Priorities</option>
@@ -233,12 +238,21 @@ const AdminDashboard = () => {
                     <option value="Critical">Critical</option>
                   </select>
                 </div>
-                <div className="col-12 col-md-4">
+                <div className="col-6 col-md-3">
                   <label className="form-label text-muted fs-8 text-uppercase">Filter Department</label>
                   <select className="form-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
                     <option value="">All Departments</option>
                     {departments.map(d => (
                       <option value={d.id} key={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-6 col-md-3">
+                  <label className="form-label text-muted fs-8 text-uppercase">Filter College</label>
+                  <select className="form-select" value={collegeFilter} onChange={(e) => setCollegeFilter(e.target.value)}>
+                    <option value="">All Colleges</option>
+                    {collegesList.map((col, idx) => (
+                      <option value={col} key={idx}>{col}</option>
                     ))}
                   </select>
                 </div>
@@ -272,8 +286,16 @@ const AdminDashboard = () => {
                             <span className="text-muted fs-8">{c.category}</span>
                           </td>
                           <td>
-                            <div className="text-white fs-7 mb-0">{c.student_name}</div>
-                            <small className="text-muted">{c.student_email}</small>
+                            <div className="text-white fs-7 mb-0 fw-bold">{c.student_name}</div>
+                            <small className="text-muted d-block">{c.student_email}</small>
+                            {c.student_college && (
+                              <span className="badge bg-secondary p-1 mt-1 fs-9 d-inline-block text-truncate" style={{ maxWidth: '180px', textTransform: 'none' }} title={c.student_college}>
+                                {c.student_college}
+                              </span>
+                            )}
+                            {c.student_branch && (
+                              <small className="text-muted d-block fs-8">{c.student_branch}</small>
+                            )}
                           </td>
                           <td>
                             <span className="text-light">{c.department_name || 'Awaiting Routing'}</span>

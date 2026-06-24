@@ -58,7 +58,7 @@ const StudentDashboard = () => {
           <div className="glass-card p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center">
             <div>
               <h2 className="text-white mb-1 font-heading">Student Workspace</h2>
-              <p className="text-muted mb-0">Hello, <strong className="text-white">{user?.name}</strong>. Here is the status of your active grievances.</p>
+              <p className="text-muted mb-0">Hello, <strong className="text-white">{user?.name}</strong> ({user?.degree} in {user?.branch} | {user?.college} - {user?.semester_year}). Here is the status of your active grievances.</p>
             </div>
             <div className="mt-3 mt-md-0">
               <Link to="/student/submit" className="btn btn-premium-primary">

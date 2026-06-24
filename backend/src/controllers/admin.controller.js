@@ -1,6 +1,7 @@
 const db = require('../config/db.config');
 const bcrypt = require('bcrypt');
 const { sendNotification } = require('../services/sns.service');
+const { generatePresignedUrl } = require('../services/s3.service');
 
 /**
  * Fetch all complaints with filters
@@ -10,7 +11,7 @@ exports.getAllComplaints = async (req, res) => {
   const { status, priority, department_id, category } = req.query;
   let queryStr = `
     SELECT c.id, c.title, c.description, c.category, c.priority, c.status, c.created_at, c.evidence_url,
-           s.name AS student_name, s.email AS student_email,
+           s.name AS student_name, s.email AS student_email, s.college AS student_college, s.branch AS student_branch,
            d.name AS department_name
     FROM Complaints c
     JOIN Users s ON c.student_id = s.id
@@ -40,6 +41,14 @@ exports.getAllComplaints = async (req, res) => {
 
   try {
     const complaints = await db.query(queryStr, params);
+    
+    // Generate pre-signed URL for each complaint's evidence_url if it exists
+    for (const complaint of complaints) {
+      if (complaint.evidence_url) {
+        complaint.evidence_url = await generatePresignedUrl(complaint.evidence_url);
+      }
+    }
+
     return res.json(complaints);
   } catch (error) {
     console.error('Admin Fetch All Complaints Error', { error: error.message });

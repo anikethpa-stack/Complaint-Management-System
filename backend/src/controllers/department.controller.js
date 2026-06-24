@@ -1,5 +1,6 @@
 const db = require('../config/db.config');
 const { sendNotification } = require('../services/sns.service');
+const { generatePresignedUrl } = require('../services/s3.service');
 
 /**
  * Fetch complaints assigned to the representative's department
@@ -22,6 +23,13 @@ exports.getDepartmentComplaints = async (req, res) => {
        ORDER BY c.created_at DESC`,
       [departmentId]
     );
+
+    // Generate pre-signed URL for each complaint's evidence_url if it exists
+    for (const complaint of complaints) {
+      if (complaint.evidence_url) {
+        complaint.evidence_url = await generatePresignedUrl(complaint.evidence_url);
+      }
+    }
 
     return res.json(complaints);
   } catch (error) {
