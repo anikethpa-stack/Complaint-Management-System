@@ -1,4 +1,5 @@
-const { PutObjectCommand } = require("@aws-sdk/client-s3");
+const { PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { s3Client, awsConfig, isAwsConfigured } = require("../config/aws.config");
 const fs = require('fs');
 const path = require('path');
@@ -8,7 +9,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 /**
  * Uploads a file buffer from Multer memory storage to S3 bucket or local folder
  * @param {Object} file - Multer file object
- * @returns {Promise<string>} - The public URL/path of the uploaded file
+ * @returns {Promise<string>} - The S3 Key or local URL of the uploaded file
  */
 async function uploadToS3(file) {
   const fileExtension = file.originalname.split('.').pop();
@@ -50,18 +51,65 @@ async function uploadToS3(file) {
     const command = new PutObjectCommand(params);
     await s3Client.send(command);
 
-    // Build standard public S3 URL
-    const region = process.env.AWS_REGION || 'us-east-1';
-    const s3Url = `https://${awsConfig.s3BucketName}.s3.${region}.amazonaws.com/${s3Key}`;
-
-    console.log('S3 evidence upload completed', { s3Url });
-    return s3Url;
+    console.log('S3 evidence upload completed', { s3Key });
+    return s3Key;
   } catch (error) {
     console.error('S3 evidence upload failed', { filename: file.originalname, error: error.message });
     throw new Error(`Failed to upload file to Amazon S3: ${error.message}`);
   }
 }
 
+/**
+ * Generates a short-lived pre-signed URL for viewing S3 objects.
+ * Backward compatible with existing full HTTP URLs in the DB.
+ * @param {string} s3KeyOrUrl - Raw S3 key or full legacy HTTP URL
+ * @returns {Promise<string>} - The signed S3 URL or unchanged local URL
+ */
+async function generatePresignedUrl(s3KeyOrUrl) {
+  if (!s3KeyOrUrl) return null;
+
+  // Support legacy full URLs (Step 8 suggestion)
+  let s3Key = s3KeyOrUrl;
+  const bucketPart = '.amazonaws.com/';
+
+  if (s3KeyOrUrl.startsWith('http://') || s3KeyOrUrl.startsWith('https://')) {
+    if (s3KeyOrUrl.includes(bucketPart)) {
+      s3Key = s3KeyOrUrl.split(bucketPart)[1];
+    } else {
+      // Local fallback URL or other non-S3 URL, return as is
+      return s3KeyOrUrl;
+    }
+  }
+
+  // If AWS is not configured, we cannot call getSignedUrl
+  if (!isAwsConfigured) {
+    console.log('AWS is not configured, returning raw S3 key/url.');
+    return s3KeyOrUrl;
+  }
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: awsConfig.s3BucketName,
+      Key: s3Key
+    });
+
+    const signedUrl = await getSignedUrl(
+      s3Client,
+      command,
+      {
+        expiresIn: 3600 // 1 hour expiration
+      }
+    );
+
+    return signedUrl;
+  } catch (error) {
+    console.error("Failed to generate pre-signed URL:", error.message);
+    throw error;
+  }
+}
+
 module.exports = {
-  uploadToS3
+  uploadToS3,
+  generatePresignedUrl
 };
+

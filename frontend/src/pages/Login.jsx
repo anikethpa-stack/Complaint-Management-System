@@ -6,11 +6,12 @@ import AuthContext from '../context/AuthContext';
  * Shared Login Component for Students, Representatives, and Administrators
  */
 const Login = () => {
-  const { login, user } = useContext(AuthContext);
+  const { login, loginWithGoogle, user } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   const navigate = useNavigate();
@@ -34,6 +35,70 @@ const Login = () => {
       else if (user.role === 'Admin') navigate('/admin/dashboard');
     }
   }, [user, navigate]);
+
+  const isGoogleConfigured = !!(
+    import.meta.env.VITE_GOOGLE_CLIENT_ID &&
+    import.meta.env.VITE_GOOGLE_CLIENT_ID !== 'your_google_client_id' &&
+    import.meta.env.VITE_GOOGLE_CLIENT_ID !== 'your_google_oauth_client_id' &&
+    import.meta.env.VITE_GOOGLE_CLIENT_ID !== 'mock_client_id' &&
+    import.meta.env.VITE_GOOGLE_CLIENT_ID.trim() !== ''
+  );
+
+  // Google Login callbacks
+  const handleGoogleResponse = async (response) => {
+    setGoogleLoading(true);
+    setError('');
+    const result = await loginWithGoogle(response.credential);
+    setGoogleLoading(false);
+    if (!result.success) {
+      setError(result.error);
+    }
+  };
+
+  useEffect(() => {
+    /* global google */
+    if (isGoogleConfigured && window.google) {
+      google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: handleGoogleResponse
+      });
+      google.accounts.id.renderButton(
+        document.getElementById("googleSignInDiv"),
+        { theme: "outline", size: "large", width: "100%" }
+      );
+    }
+  }, [isGoogleConfigured]);
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    setError('');
+    
+    // Simulated Google pop-up login prompt
+    const simulatedEmail = window.prompt("Google Account Simulation:\nEnter your Google Email Address to authenticate:", "student@college.edu");
+    
+    if (!simulatedEmail) {
+      setGoogleLoading(false);
+      return;
+    }
+    
+    if (!simulatedEmail.includes('@')) {
+      setError('Please provide a valid Google email address.');
+      setGoogleLoading(false);
+      return;
+    }
+
+    const mockCredential = JSON.stringify({
+      email: simulatedEmail.trim(),
+      name: simulatedEmail.split('@')[0].split('.')[0].replace(/^\w/, (c) => c.toUpperCase()) + ' ' + (simulatedEmail.split('@')[0].split('.')[1] || 'User').replace(/^\w/, (c) => c.toUpperCase())
+    });
+
+    const result = await loginWithGoogle(mockCredential);
+    setGoogleLoading(false);
+    
+    if (!result.success) {
+      setError(result.error);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -122,7 +187,7 @@ const Login = () => {
             <button
               type="submit"
               className="btn btn-premium-primary w-100 py-3 mb-3 d-flex align-items-center justify-content-center"
-              disabled={loading}
+              disabled={loading || googleLoading}
             >
               {loading ? (
                 <>
@@ -137,19 +202,46 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="text-center mt-3">
+          {/* Conditionally render either the native Google OAuth widget or the simulated prompt flow */}
+          {isGoogleConfigured ? (
+            <>
+              <div className="text-center my-3 text-muted fs-8 text-uppercase position-relative">
+                <span className="bg-white px-2 position-relative" style={{ zIndex: 2 }}>or continue with</span>
+                <div className="position-absolute top-50 start-0 w-100 border-bottom border-light" style={{ zIndex: 1 }}></div>
+              </div>
+              <div id="googleSignInDiv" className="w-100 mb-3 d-flex justify-content-center"></div>
+            </>
+          ) : (
+            <>
+              <div className="text-center my-3 text-muted fs-8 text-uppercase position-relative">
+                <span className="bg-white px-2 position-relative" style={{ zIndex: 2 }}>or continue with</span>
+                <div className="position-absolute top-50 start-0 w-100 border-bottom border-light" style={{ zIndex: 1 }}></div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-google-signin w-100 mb-3"
+                onClick={handleGoogleSignIn}
+                disabled={loading || googleLoading}
+              >
+                {googleLoading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Connecting to Google...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-google me-2 text-danger"></i> Sign In with Google (Simulation)
+                  </>
+                )}
+              </button>
+            </>
+          )}
+
+          <div className="text-center mt-3 border-top border-light pt-3">
             <span className="text-muted fs-7">New student? </span>
             <Link to="/register" className="text-primary text-decoration-none fs-7 fw-semibold">
               Create an account
             </Link>
-          </div>
-        </div>
-
-        <div className="mt-5 text-center text-muted fs-8">
-          <p className="mb-1">Demo Credentials:</p>
-          <div className="d-flex flex-wrap justify-content-center gap-2">
-            <span className="badge bg-secondary p-2">Admin: admin@college.edu / admin123</span>
-            <span className="badge bg-secondary p-2">Rep: academic.rep@college.edu / rep123</span>
           </div>
         </div>
       </div>
