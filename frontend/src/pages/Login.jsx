@@ -69,38 +69,49 @@ const Login = () => {
     }
   }, [isGoogleConfigured]);
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
+  // Listen for message from the Google Sign-in simulation popup
+  useEffect(() => {
+    const handleGoogleMessage = async (event) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data && event.data.type === 'GOOGLE_SIGNIN_SUCCESS') {
+        const { credential } = event.data;
+        setGoogleLoading(true);
+        setError('');
+        const result = await loginWithGoogle(credential);
+        setGoogleLoading(false);
+        if (!result.success) {
+          setError(result.error);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleGoogleMessage);
+    return () => window.removeEventListener('message', handleGoogleMessage);
+  }, [loginWithGoogle]);
+
+  const handleGoogleSignIn = () => {
     setError('');
-    
-    // Simulated Google login prompts for demonstration
-    const simulatedEmail = window.prompt(
-      "Google Account Simulation:\nEnter your Google Email Address to authenticate:\n(Admin emails: anikethpa411@gmail.com, abdullah2003shoaib@gmail.com, srikanthsriko@gmail.com)",
-      "anikethpa411@gmail.com"
+    setGoogleLoading(true);
+
+    const width = 500;
+    const height = 600;
+    const left = window.top.outerWidth / 2 + window.top.screenX - (width / 2);
+    const top = window.top.outerHeight / 2 + window.top.screenY - (height / 2);
+
+    const popup = window.open(
+      '/login/google-simulation',
+      'google_signin_popup',
+      `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=no`
     );
-    
-    if (!simulatedEmail) {
-      setGoogleLoading(false);
-      return;
-    }
-    
-    if (!simulatedEmail.includes('@')) {
-      setError('Please provide a valid Google email address.');
-      setGoogleLoading(false);
-      return;
-    }
 
-    const mockCredential = JSON.stringify({
-      email: simulatedEmail.trim(),
-      name: simulatedEmail.split('@')[0].split('.')[0].replace(/^\w/, (c) => c.toUpperCase()) + ' ' + (simulatedEmail.split('@')[0].split('.')[1] || 'User').replace(/^\w/, (c) => c.toUpperCase())
-    });
-
-    const result = await loginWithGoogle(mockCredential);
-    setGoogleLoading(false);
-    
-    if (!result.success) {
-      setError(result.error);
-    }
+    // Track popup closure to stop loading spinner if user closes window manually
+    const popupCheck = setInterval(() => {
+      if (!popup || popup.closed) {
+        clearInterval(popupCheck);
+        setGoogleLoading(false);
+      }
+    }, 1000);
   };
 
   const handleSubmit = async (e) => {
@@ -122,25 +133,17 @@ const Login = () => {
     }
   };
 
-  // Helper function for quick demo logins
-  const handleQuickLogin = async (demoEmail, demoPassword) => {
-    setError('');
-    setMessage('');
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    
-    setLoading(true);
-    const result = await login(demoEmail, demoPassword);
-    setLoading(false);
 
-    if (!result.success) {
-      setError(result.error);
-    }
-  };
 
   return (
     <div className="container d-flex align-items-center justify-content-center min-vh-100 py-5">
       <div className="w-100 animate-fade-in" style={{ maxWidth: '480px' }}>
+        <div className="mb-3 text-start">
+          <Link to="/" className="text-muted text-decoration-none fs-7 d-inline-flex align-items-center">
+            <i className="bi bi-arrow-left me-1"></i> Back to Home
+          </Link>
+        </div>
+
         <div className="text-center mb-4">
           <Link to="/" className="text-decoration-none">
             <i className="bi bi-shield-fill-check text-primary display-4 glow-text mb-2 d-inline-block"></i>
@@ -244,52 +247,7 @@ const Login = () => {
             </button>
           )}
 
-          {/* Quick Demo Logins Panel */}
-          <div className="border-top border-light mt-4 pt-3">
-            <h6 className="text-dark font-heading fw-bold text-center mb-3">
-              <i className="bi bi-shield-lock-fill text-primary"></i> Administrative Demonstration Console
-            </h6>
-            
-            <div className="d-flex flex-column gap-2">
-              <button 
-                type="button"
-                className="btn btn-outline-info text-start py-2 fs-8"
-                onClick={() => handleQuickLogin('anikethpa411@gmail.com', 'admin123')}
-                disabled={loading}
-              >
-                <i className="bi bi-person-badge-fill me-1 text-primary"></i> Log in as <strong>Aniketh (Admin)</strong>
-              </button>
-              <button 
-                type="button"
-                className="btn btn-outline-info text-start py-2 fs-8"
-                onClick={() => handleQuickLogin('abdullah2003shoaib@gmail.com', 'admin123')}
-                disabled={loading}
-              >
-                <i className="bi bi-person-badge-fill me-1 text-primary"></i> Log in as <strong>Abdullah (Admin)</strong>
-              </button>
-              <button 
-                type="button"
-                className="btn btn-outline-info text-start py-2 fs-8"
-                onClick={() => handleQuickLogin('srikanthsriko@gmail.com', 'admin123')}
-                disabled={loading}
-              >
-                <i className="bi bi-person-badge-fill me-1 text-primary"></i> Log in as <strong>Srikanth (Admin)</strong>
-              </button>
-              
-              <div className="border-top border-light my-2"></div>
-              
-              {/* Attempt with unauthorized admin account */}
-              <button 
-                type="button"
-                className="btn btn-outline-secondary text-start py-2 fs-8 text-danger border-danger border-opacity-25"
-                onClick={() => handleQuickLogin('admin@college.edu', 'admin123')}
-                disabled={loading}
-                title="This email is no longer on the allowed admins list"
-              >
-                <i className="bi bi-exclamation-triangle-fill me-1 text-danger"></i> Try Legacy <strong>admin@college.edu</strong> (Blocks)
-              </button>
-            </div>
-          </div>
+
 
           <div className="text-center mt-3 border-top border-light pt-3">
             <span className="text-muted fs-7">New student? </span>
