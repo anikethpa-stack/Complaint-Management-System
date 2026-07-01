@@ -203,7 +203,14 @@ const Layout = ({ children }) => {
     );
   }
 
-  const isActive = (path) => location.pathname === path ? 'active' : '';
+  const isActive = (path) => location.pathname === path && !location.search ? 'active' : '';
+
+  const isTabActive = (tabName, defaultTab = false) => {
+    const searchParams = new URLSearchParams(location.search);
+    const activeTab = searchParams.get('tab');
+    if (!activeTab && defaultTab) return 'active';
+    return activeTab === tabName ? 'active' : '';
+  };
 
   return (
     <div className="min-vh-100 d-flex flex-column fade-in">
@@ -211,7 +218,7 @@ const Layout = ({ children }) => {
       <nav className="navbar navbar-expand-lg navbar-dark navbar-custom py-3 px-4 sticky-top">
         <div className="container-fluid">
           <Link className="navbar-brand d-flex align-items-center" to="/">
-            <i className="bi bi-shield-fill-exclamation text-primary fs-3 me-2"></i>
+            <i className="bi bi-shield-fill-check text-primary fs-3 me-2"></i>
             <span className="fw-bold tracking-tight text-white font-heading">
               GrievancePortal <span className="fs-6 text-primary fw-light">HEI</span>
             </span>
@@ -219,7 +226,7 @@ const Layout = ({ children }) => {
           
           <div className="d-flex align-items-center">
             <div className="text-end me-3 d-none d-md-block">
-              <span className="text-light d-block fs-7">Logged in as</span>
+              <span className="text-light d-block fs-7" style={{ opacity: 0.8 }}>Logged in as</span>
               <span className="text-primary fw-semibold fs-6">{user.name}</span>
             </div>
             
@@ -269,11 +276,23 @@ const Layout = ({ children }) => {
 
               {user.role === 'Admin' && (
                 <>
-                  <Link to="/admin/dashboard" className={`sidebar-link ${isActive('/admin/dashboard')}`}>
-                    <i className="bi bi-kanban"></i> Portal Console
+                  <Link to="/admin/dashboard" className={`sidebar-link ${location.pathname === '/admin/dashboard' && isTabActive('dashboard', true)}`}>
+                    <i className="bi bi-speedometer2"></i> Dashboard
+                  </Link>
+                  <Link to="/admin/dashboard?tab=complaints" className={`sidebar-link ${location.pathname === '/admin/dashboard' && isTabActive('complaints')}`}>
+                    <i className="bi bi-chat-left-text-fill"></i> Complaints
+                  </Link>
+                  <Link to="/admin/dashboard?tab=departments" className={`sidebar-link ${location.pathname === '/admin/dashboard' && isTabActive('departments')}`}>
+                    <i className="bi bi-building"></i> Departments
                   </Link>
                   <Link to="/admin/analytics" className={`sidebar-link ${isActive('/admin/analytics')}`}>
-                    <i className="bi bi-bar-chart-line-fill"></i> Analytics metrics
+                    <i className="bi bi-bar-chart-line-fill"></i> Analytics
+                  </Link>
+                  <Link to="/admin/dashboard?tab=reports" className={`sidebar-link ${location.pathname === '/admin/dashboard' && isTabActive('reports')}`}>
+                    <i className="bi bi-file-earmark-bar-graph"></i> Reports
+                  </Link>
+                  <Link to="/admin/dashboard?tab=settings" className={`sidebar-link ${location.pathname === '/admin/dashboard' && isTabActive('settings')}`}>
+                    <i className="bi bi-gear-fill"></i> Settings
                   </Link>
                 </>
               )}
