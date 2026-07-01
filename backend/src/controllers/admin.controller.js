@@ -7,15 +7,52 @@ const { generatePresignedUrl } = require('../services/s3.service');
  * Fetch all complaints with filters
  * GET /api/admin/complaints
  */
+const mapToCamelCase = async (row) => {
+  let attachmentUrl = null;
+  if (row.evidence_url) {
+    attachmentUrl = await generatePresignedUrl(row.evidence_url);
+  }
+  return {
+    complaintId: row.id,
+    studentId: row.student_id,
+    title: row.title,
+    category: row.category,
+    description: row.description,
+    priority: row.priority,
+    status: row.status,
+    departmentId: row.department_id,
+    department: row.department || row.department_name || null,
+    attachmentUrl: attachmentUrl,
+    adminRemarks: row.admin_remarks || null,
+    assignedBy: row.assigned_by || null,
+    assignedDate: row.assigned_date || null,
+    resolvedDate: row.resolved_date || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    studentName: row.student_name || null,
+    studentEmail: row.student_email || null,
+    studentPhone: row.student_phone || null,
+    studentCollege: row.student_college || null,
+    studentBranch: row.student_branch || null,
+    assignedByName: row.assigned_by_name || null
+  };
+};
+
+/**
+ * Fetch all complaints with filters and searching
+ * GET /api/admin/complaints
+ */
 exports.getAllComplaints = async (req, res) => {
-  const { status, priority, department_id, category } = req.query;
+  const { status, priority, department_id, category, search } = req.query;
   let queryStr = `
-    SELECT c.id, c.title, c.description, c.category, c.priority, c.status, c.created_at, c.evidence_url,
+    SELECT c.*,
            s.name AS student_name, s.email AS student_email, s.college AS student_college, s.branch AS student_branch,
-           d.name AS department_name
+           d.name AS department_name,
+           a.name AS assigned_by_name
     FROM Complaints c
     JOIN Users s ON c.student_id = s.id
     LEFT JOIN Departments d ON c.department_id = d.id
+    LEFT JOIN Users a ON c.assigned_by = a.id
     WHERE 1=1
   `;
   const params = [];
@@ -36,20 +73,21 @@ exports.getAllComplaints = async (req, res) => {
     queryStr += ' AND c.category = ?';
     params.push(category);
   }
+  if (search) {
+    queryStr += ' AND (c.title LIKE ? OR c.description LIKE ? OR s.name LIKE ? OR s.email LIKE ? OR c.id LIKE ?)';
+    const searchVal = `%${search}%`;
+    params.push(searchVal, searchVal, searchVal, searchVal, searchVal);
+  }
 
   queryStr += ' ORDER BY c.created_at DESC';
 
   try {
     const complaints = await db.query(queryStr, params);
-    
-    // Generate pre-signed URL for each complaint's evidence_url if it exists
-    for (const complaint of complaints) {
-      if (complaint.evidence_url) {
-        complaint.evidence_url = await generatePresignedUrl(complaint.evidence_url);
-      }
+    const mapped = [];
+    for (const c of complaints) {
+      mapped.push(await mapToCamelCase(c));
     }
-
-    return res.json(complaints);
+    return res.json(mapped);
   } catch (error) {
     console.error('Admin Fetch All Complaints Error', { error: error.message });
     return res.status(500).json({ error: 'Server error while fetching complaints.' });
@@ -465,5 +503,338 @@ exports.createDepartment = async (req, res) => {
   } catch (error) {
     console.error('Admin Create Department Error', { name, error: error.message });
     return res.status(500).json({ error: 'Server error while creating department.' });
+  }
+};
+
+/**
+ * Fetch Admin Dashboard data
+ * GET /api/admin/dashboard
+ */
+exports.getAdminDashboard = async (req, res) => {
+  try {
+    const counts = await db.query(`
+      SELECT status, COUNT(*) AS count 
+      FROM Complaints 
+      GROUP BY status
+    `);
+    
+    const stats = {
+      total: 0,
+      pending: 0,
+      underReview: 0,
+      assigned: 0,
+      inProgress: 0,
+      resolved: 0,
+      closed: 0
+    };
+
+    counts.forEach(row => {
+      const count = parseInt(row.count, 10);
+      stats.total += count;
+      if (row.status === 'Pending') stats.pending = count;
+      else if (row.status === 'Under Review') stats.underReview = count;
+      else if (row.status === 'Assigned') stats.assigned = count;
+      else if (row.status === 'In Progress') stats.inProgress = count;
+      else if (row.status === 'Resolved') stats.resolved = count;
+      else if (row.status === 'Closed') stats.closed = count;
+    });
+
+    // Department distribution
+    const deptCounts = await db.query(`
+      SELECT COALESCE(d.name, 'Unassigned') AS department, COUNT(c.id) AS count 
+      FROM Complaints c 
+      LEFT JOIN Departments d ON c.department_id = d.id 
+      GROUP BY c.department_id, d.name
+    `);
+
+    // Category distribution
+    const catCounts = await db.query(`
+      SELECT category, COUNT(*) AS count 
+      FROM Complaints 
+      GROUP BY category
+    `);
+
+    // Recent complaints (limit 5)
+    const recentRows = await db.query(`
+      SELECT c.*, s.name AS student_name, s.email AS student_email, d.name AS department_name
+      FROM Complaints c
+      JOIN Users s ON c.student_id = s.id
+      LEFT JOIN Departments d ON c.department_id = d.id
+      ORDER BY c.created_at DESC
+      LIMIT 5
+    `);
+
+    const recent = [];
+    for (const r of recentRows) {
+      recent.push(await mapToCamelCase(r));
+    }
+
+    return res.json({
+      stats,
+      departmentDistribution: deptCounts,
+      categoryDistribution: catCounts,
+      recentComplaints: recent
+    });
+  } catch (error) {
+    console.error('Fetch Admin Dashboard Error', { error: error.message });
+    return res.status(500).json({ error: 'Server error while fetching dashboard statistics.' });
+  }
+};
+
+/**
+ * Fetch detailed complaint by ID for Admin
+ * GET /api/admin/complaints/:id
+ */
+exports.getAdminComplaintById = async (req, res) => {
+  const complaintId = req.params.id;
+  try {
+    const rows = await db.query(`
+      SELECT c.*, 
+             s.name AS student_name, s.email AS student_email, s.phone AS student_phone, s.college AS student_college, s.branch AS student_branch,
+             d.name AS department_name,
+             a.name AS assigned_by_name
+      FROM Complaints c 
+      JOIN Users s ON c.student_id = s.id
+      LEFT JOIN Departments d ON c.department_id = d.id 
+      LEFT JOIN Users a ON c.assigned_by = a.id
+      WHERE c.id = ?
+    `, [complaintId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Complaint not found.' });
+    }
+
+    const complaint = await mapToCamelCase(rows[0]);
+
+    // Fetch updates log
+    const updates = await db.query(`
+      SELECT cu.*, u.name AS updater_name, u.role AS updater_role
+      FROM ComplaintUpdates cu
+      JOIN Users u ON cu.user_id = u.id
+      WHERE cu.complaint_id = ?
+      ORDER BY cu.created_at ASC
+    `, [complaintId]);
+
+    const mappedUpdates = updates.map(u => ({
+      id: u.id,
+      complaintId: u.complaint_id,
+      userId: u.user_id,
+      statusFrom: u.status_from,
+      statusTo: u.status_to,
+      remarks: u.remarks,
+      createdAt: u.created_at,
+      updaterName: u.updater_name,
+      updaterRole: u.updater_role
+    }));
+
+    return res.json({
+      complaint,
+      updates: mappedUpdates
+    });
+  } catch (error) {
+    console.error('Fetch Admin Complaint Details Error', { complaintId, error: error.message });
+    return res.status(500).json({ error: 'Server error while retrieving complaint details.' });
+  }
+};
+
+/**
+ * Update complaint status
+ * PATCH /api/admin/complaints/:id/status
+ */
+exports.updateComplaintStatus = async (req, res) => {
+  const complaintId = req.params.id;
+  const { status, remarks } = req.body;
+  const adminId = req.user.id;
+
+  if (!status || !remarks) {
+    return res.status(400).json({ error: 'Status and remarks are required.' });
+  }
+
+  const allowedStatuses = ['Pending', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Closed'];
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status state.' });
+  }
+
+  try {
+    const list = await db.query('SELECT status, student_id, title FROM Complaints WHERE id = ?', [complaintId]);
+    if (list.length === 0) {
+      return res.status(404).json({ error: 'Complaint not found.' });
+    }
+    const complaint = list[0];
+    const originalStatus = complaint.status;
+
+    let updateQuery = 'UPDATE Complaints SET status = ?';
+    const updateParams = [status];
+
+    if (status === 'Resolved') {
+      updateQuery += ', resolved_date = CURRENT_TIMESTAMP';
+    }
+
+    updateQuery += ' WHERE id = ?';
+    updateParams.push(complaintId);
+
+    await db.query(updateQuery, updateParams);
+
+    // Log update audit trail
+    await db.query(
+      'INSERT INTO ComplaintUpdates (complaint_id, user_id, status_from, status_to, remarks) VALUES (?, ?, ?, ?, ?)',
+      [complaintId, adminId, originalStatus, status, remarks]
+    );
+
+    // Notify Student
+    await db.query(
+      'INSERT INTO Notifications (user_id, message) VALUES (?, ?)',
+      [complaint.student_id, `Your complaint #${complaintId} status was updated to "${status}". Remarks: "${remarks}"`]
+    );
+
+    // Send SNS Email update
+    const studentUser = await db.query('SELECT name, email FROM Users WHERE id = ?', [complaint.student_id]);
+    if (studentUser.length > 0) {
+      const student = studentUser[0];
+      const subject = `Complaint Status Update: #${complaintId}`;
+      const emailBody = `Dear ${student.name},\n\n` +
+        `Your complaint status has been updated to "${status}" by the administrator.\n\n` +
+        `Complaint Reference: #${complaintId}\n` +
+        `Title: ${complaint.title}\n` +
+        `Status: ${status}\n` +
+        `Remarks: "${remarks}"\n\n` +
+        `Regards,\n` +
+        `Student Grievance & Complaint Management System`;
+      
+      sendNotification(subject, emailBody);
+    }
+
+    return res.json({
+      message: `Complaint status updated to ${status} successfully.`,
+      complaintId
+    });
+  } catch (error) {
+    console.error('Admin Update Status Error', { complaintId, error: error.message });
+    return res.status(500).json({ error: 'Server error while updating status.' });
+  }
+};
+
+/**
+ * Assign department and details
+ * PATCH /api/admin/complaints/:id/assign
+ */
+exports.assignComplaintRoute = async (req, res) => {
+  const complaintId = req.params.id;
+  const { departmentId, priority } = req.body;
+  const adminId = req.user.id;
+
+  if (!departmentId) {
+    return res.status(400).json({ error: 'Department ID is required.' });
+  }
+
+  try {
+    const currentList = await db.query('SELECT status, title, student_id FROM Complaints WHERE id = ?', [complaintId]);
+    if (currentList.length === 0) {
+      return res.status(404).json({ error: 'Complaint not found.' });
+    }
+    const complaint = currentList[0];
+    const originalStatus = complaint.status;
+
+    const deptList = await db.query('SELECT name FROM Departments WHERE id = ?', [departmentId]);
+    if (deptList.length === 0) {
+      return res.status(404).json({ error: 'Department not found.' });
+    }
+    const departmentName = deptList[0].name;
+
+    // Update status to 'Assigned', set department, assigned_by and assigned_date
+    const updateParams = [departmentId, 'Assigned', adminId, departmentName];
+    let updateQuery = 'UPDATE Complaints SET department_id = ?, status = ?, assigned_by = ?, assigned_date = CURRENT_TIMESTAMP, department = ?';
+
+    if (priority) {
+      updateQuery += ', priority = ?';
+      updateParams.push(priority);
+    }
+
+    updateQuery += ' WHERE id = ?';
+    updateParams.push(complaintId);
+
+    await db.query(updateQuery, updateParams);
+
+    const remarks = `Complaint routed to department "${departmentName}"${priority ? ` with priority "${priority}"` : ''} by administrator.`;
+    await db.query(
+      'INSERT INTO ComplaintUpdates (complaint_id, user_id, status_from, status_to, remarks) VALUES (?, ?, ?, ?, ?)',
+      [complaintId, adminId, originalStatus, 'Assigned', remarks]
+    );
+
+    // Notifications
+    await db.query(
+      'INSERT INTO Notifications (user_id, message) VALUES (?, ?)',
+      [complaint.student_id, `Your complaint #${complaintId} has been routed to the ${departmentName} Department.`]
+    );
+
+    const reps = await db.query('SELECT id FROM Users WHERE role = ? AND department_id = ?', ['Department Representative', departmentId]);
+    for (const rep of reps) {
+      await db.query(
+        'INSERT INTO Notifications (user_id, message) VALUES (?, ?)',
+        [rep.id, `A new complaint #${complaintId} has been assigned to your department.`]
+      );
+    }
+
+    // Send SNS Email update
+    const studentUser = await db.query('SELECT name, email FROM Users WHERE id = ?', [complaint.student_id]);
+    if (studentUser.length > 0) {
+      const student = studentUser[0];
+      const subject = `Complaint Assigned Route: #${complaintId}`;
+      const emailBody = `Dear ${student.name},\n\n` +
+        `Your complaint is now assigned to the ${departmentName} Department.\n\n` +
+        `Complaint Reference: #${complaintId}\n` +
+        `Title: ${complaint.title}\n` +
+        `Status: Assigned\n\n` +
+        `Regards,\n` +
+        `Student Grievance & Complaint Management System`;
+      
+      sendNotification(subject, emailBody);
+    }
+
+    return res.json({
+      message: `Complaint routed to ${departmentName} successfully.`,
+      complaintId
+    });
+  } catch (error) {
+    console.error('Admin Routing Error', { complaintId, error: error.message });
+    return res.status(500).json({ error: 'Server error while assigning department.' });
+  }
+};
+
+/**
+ * Add / Update Admin Remarks
+ * PATCH /api/admin/complaints/:id/remarks
+ */
+exports.updateComplaintRemarks = async (req, res) => {
+  const complaintId = req.params.id;
+  const { adminRemarks } = req.body;
+  const adminId = req.user.id;
+
+  if (adminRemarks === undefined) {
+    return res.status(400).json({ error: 'Remarks are required.' });
+  }
+
+  try {
+    const current = await db.query('SELECT status, student_id FROM Complaints WHERE id = ?', [complaintId]);
+    if (current.length === 0) {
+      return res.status(404).json({ error: 'Complaint not found.' });
+    }
+    const complaint = current[0];
+
+    await db.query('UPDATE Complaints SET admin_remarks = ? WHERE id = ?', [adminRemarks, complaintId]);
+
+    // Log update audit trail
+    await db.query(
+      'INSERT INTO ComplaintUpdates (complaint_id, user_id, status_from, status_to, remarks) VALUES (?, ?, ?, ?, ?)',
+      [complaintId, adminId, complaint.status, complaint.status, `Administrator remarks updated: "${adminRemarks}"`]
+    );
+
+    return res.json({
+      message: 'Admin remarks updated successfully.',
+      complaintId
+    });
+  } catch (error) {
+    console.error('Admin Update Remarks Error', { complaintId, error: error.message });
+    return res.status(500).json({ error: 'Server error while updating remarks.' });
   }
 };

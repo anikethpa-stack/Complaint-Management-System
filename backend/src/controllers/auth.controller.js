@@ -71,6 +71,19 @@ exports.login = async (req, res) => {
 
     const user = users[0];
 
+    // Restrict Admin login to specific allowed emails only
+    if (user.role === 'Admin') {
+      const allowedAdmins = [
+        'anikethpa411@gmail.com',
+        'abdullah2003shoaib@gmail.com',
+        'srikanthsriko@gmail.com'
+      ];
+      if (!allowedAdmins.includes(user.email.toLowerCase())) {
+        console.error('Authentication Failure - Blocked Admin Email', { email });
+        return res.status(403).json({ error: 'Access denied. Unauthorized administrator email.' });
+      }
+    }
+
     // Verify password hash
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
@@ -156,21 +169,28 @@ exports.googleLogin = async (req, res) => {
     let user;
 
     if (users.length === 0) {
-      // Create a new Student account (Google login results in default role 'Student')
+      // Determine role based on email list
+      const allowedAdmins = [
+        'anikethpa411@gmail.com',
+        'abdullah2003shoaib@gmail.com',
+        'srikanthsriko@gmail.com'
+      ];
+      const role = allowedAdmins.includes(email.toLowerCase()) ? 'Admin' : 'Student';
+
       const randomPassword = Math.random().toString(36).substring(2, 15);
       const saltRounds = 10;
       const passwordHash = await bcrypt.hash(randomPassword, saltRounds);
 
       const result = await db.query(
         'INSERT INTO Users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
-        [name || email.split('@')[0], email, passwordHash, 'Student']
+        [name || email.split('@')[0], email, passwordHash, role]
       );
 
       user = {
         id: result.insertId,
         name: name || email.split('@')[0],
         email,
-        role: 'Student',
+        role: role,
         department_id: null,
         phone: null,
         college: null,
@@ -182,6 +202,16 @@ exports.googleLogin = async (req, res) => {
       console.log('Google User Registration Successful', { email, userId: user.id });
     } else {
       user = users[0];
+      if (user.role === 'Admin') {
+        const allowedAdmins = [
+          'anikethpa411@gmail.com',
+          'abdullah2003shoaib@gmail.com',
+          'srikanthsriko@gmail.com'
+        ];
+        if (!allowedAdmins.includes(user.email.toLowerCase())) {
+          return res.status(403).json({ error: 'Access denied. Unauthorized administrator email.' });
+        }
+      }
       console.log('Google User Login Successful', { email, userId: user.id });
     }
 

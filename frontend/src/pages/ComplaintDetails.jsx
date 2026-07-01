@@ -4,8 +4,7 @@ import AuthContext from '../context/AuthContext';
 import api from '../services/api';
 
 /**
- * Details view showing single complaint particulars, full audit log,
- * and context actions for Students, Department Reps, and Admins.
+ * Redesigned Details View for Student Grievance tickets
  */
 const ComplaintDetails = () => {
   const { id } = useParams();
@@ -15,11 +14,12 @@ const ComplaintDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Action states
+  // Actions
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [actionSuccess, setActionSuccess] = useState('');
 
-  // Rep action fields
+  // Rep status fields
   const [repStatus, setRepStatus] = useState('');
   const [repRemarks, setRepRemarks] = useState('');
 
@@ -27,18 +27,67 @@ const ComplaintDetails = () => {
   const [departments, setDepartments] = useState([]);
   const [adminDeptId, setAdminDeptId] = useState('');
   const [adminPriority, setAdminPriority] = useState('');
-  const [adminRemarks, setAdminRemarks] = useState('');
+  const [adminRemarksState, setAdminRemarksState] = useState('');
+  const [adminStatus, setAdminStatus] = useState('');
+  const [adminStatusRemarks, setAdminStatusRemarks] = useState('');
 
   const fetchDetails = async () => {
     try {
-      const response = await api.get(`/complaints/${id}`);
-      setData(response.data);
-      // Prepopulate forms
-      setRepStatus(response.data.complaint.status === 'Assigned' ? 'In Progress' : response.data.complaint.status);
-      setAdminPriority(response.data.complaint.priority);
-      setAdminDeptId(response.data.complaint.department_id || '');
+      const isUrlAdmin = user?.role === 'Admin';
+      const response = await api.get(isUrlAdmin ? `/admin/complaints/${id}` : `/complaints/${id}`);
+      
+      let detailsData = response.data;
+      
+      // Compatibility mapper for legacy student/rep snake_case responses
+      if (!isUrlAdmin) {
+        const rawComp = response.data.complaint;
+        detailsData = {
+          complaint: {
+            complaintId: rawComp.id,
+            studentId: rawComp.student_id,
+            title: rawComp.title,
+            category: rawComp.category,
+            description: rawComp.description,
+            priority: rawComp.priority,
+            status: rawComp.status,
+            departmentId: rawComp.department_id,
+            department: rawComp.department_name,
+            attachmentUrl: rawComp.evidence_url,
+            adminRemarks: rawComp.admin_remarks || null,
+            assignedBy: rawComp.assigned_by || null,
+            assignedDate: rawComp.assigned_date || null,
+            resolvedDate: rawComp.resolved_date || null,
+            createdAt: rawComp.created_at,
+            updatedAt: rawComp.updated_at,
+            studentName: rawComp.student_name,
+            studentEmail: rawComp.student_email,
+            studentPhone: rawComp.student_phone,
+            studentCollege: rawComp.student_college,
+            studentBranch: rawComp.student_branch,
+            assignedByName: rawComp.assigned_by_name
+          },
+          updates: response.data.updates.map(u => ({
+            id: u.id,
+            complaintId: u.complaint_id,
+            userId: u.user_id,
+            statusFrom: u.status_from,
+            statusTo: u.status_to,
+            remarks: u.remarks,
+            createdAt: u.created_at,
+            updaterName: u.updater_name,
+            updaterRole: u.updater_role
+          }))
+        };
+      }
+
+      setData(detailsData);
+      setRepStatus(detailsData.complaint.status === 'Assigned' ? 'In Progress' : detailsData.complaint.status);
+      setAdminStatus(detailsData.complaint.status);
+      setAdminPriority(detailsData.complaint.priority || 'Medium');
+      setAdminDeptId(detailsData.complaint.departmentId || '');
+      setAdminRemarksState(detailsData.complaint.adminRemarks || '');
     } catch (err) {
-      setError('Could not retrieve complaint details.');
+      setError('Could not retrieve complaint records.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -47,8 +96,6 @@ const ComplaintDetails = () => {
 
   useEffect(() => {
     fetchDetails();
-    
-    // Fetch departments list if user is Admin
     if (user?.role === 'Admin') {
       api.get('/admin/departments')
         .then(res => setDepartments(res.data))
@@ -59,6 +106,7 @@ const ComplaintDetails = () => {
   const handleRepSubmit = async (e) => {
     e.preventDefault();
     setActionError('');
+    setActionSuccess('');
     if (!repRemarks) {
       setActionError('Please enter remarks/resolution notes.');
       return;
@@ -71,6 +119,7 @@ const ComplaintDetails = () => {
         remarks: repRemarks
       });
       setRepRemarks('');
+      setActionSuccess('Status updated successfully!');
       await fetchDetails();
     } catch (err) {
       setActionError(err.response?.data?.error || 'Failed to update complaint.');
@@ -82,6 +131,7 @@ const ComplaintDetails = () => {
   const handleAdminAssign = async (e) => {
     e.preventDefault();
     setActionError('');
+    setActionSuccess('');
     if (!adminDeptId) {
       setActionError('Please select a department.');
       return;
@@ -89,61 +139,58 @@ const ComplaintDetails = () => {
 
     setActionLoading(true);
     try {
-      await api.post('/admin/assign', {
-        complaint_id: id,
-        department_id: adminDeptId,
+      await api.patch(`/admin/complaints/${id}/assign`, {
+        departmentId: adminDeptId,
         priority: adminPriority
       });
+      setActionSuccess('Department assigned and priority updated successfully!');
       await fetchDetails();
     } catch (err) {
-      setActionError(err.response?.data?.error || 'Failed to assign complaint.');
+      setActionError(err.response?.data?.error || 'Failed to route complaint.');
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleAdminEscalate = async (e) => {
+  const handleAdminStatusUpdate = async (e) => {
     e.preventDefault();
     setActionError('');
-    if (!adminRemarks) {
-      setActionError('Please enter escalation reason/remarks.');
+    setActionSuccess('');
+    if (!adminStatusRemarks) {
+      setActionError('Status update remarks are required.');
       return;
     }
 
     setActionLoading(true);
     try {
-      await api.put('/admin/escalate', {
-        complaint_id: id,
-        priority: adminPriority,
-        remarks: adminRemarks
+      await api.patch(`/admin/complaints/${id}/status`, {
+        status: adminStatus,
+        remarks: adminStatusRemarks
       });
-      setAdminRemarks('');
+      setActionSuccess('Status updated successfully!');
+      setAdminStatusRemarks('');
       await fetchDetails();
     } catch (err) {
-      setActionError(err.response?.data?.error || 'Failed to update priority.');
+      setActionError(err.response?.data?.error || 'Failed to change status.');
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleAdminClose = async (e) => {
+  const handleAdminRemarksSubmit = async (e) => {
     e.preventDefault();
     setActionError('');
-    if (!adminRemarks) {
-      setActionError('Please provide closing summary remarks.');
-      return;
-    }
+    setActionSuccess('');
 
     setActionLoading(true);
     try {
-      await api.put('/admin/close', {
-        complaint_id: id,
-        remarks: adminRemarks
+      await api.patch(`/admin/complaints/${id}/remarks`, {
+        adminRemarks: adminRemarksState
       });
-      setAdminRemarks('');
+      setActionSuccess('Admin comments updated successfully!');
       await fetchDetails();
     } catch (err) {
-      setActionError(err.response?.data?.error || 'Failed to close complaint.');
+      setActionError(err.response?.data?.error || 'Failed to post remarks.');
     } finally {
       setActionLoading(false);
     }
@@ -161,9 +208,9 @@ const ComplaintDetails = () => {
 
   if (error || !data) {
     return (
-      <div className="container-fluid py-2">
+      <div className="container py-3">
         <div className="alert alert-danger border-0 bg-danger bg-opacity-10 text-danger rounded-3 p-3">
-          <i className="bi bi-exclamation-triangle-fill me-2"></i> {error || 'Complaint not found.'}
+          <i className="bi bi-exclamation-triangle-fill me-2"></i> {error || 'Record not found.'}
         </div>
         <Link to="/" className="btn btn-outline-primary rounded-pill px-3">
           Back to Home
@@ -175,25 +222,36 @@ const ComplaintDetails = () => {
   const { complaint, updates } = data;
 
   return (
-    <div className="container-fluid py-2">
-      {/* Navigation link */}
+    <div className="container py-2">
       <div className="mb-4">
         <Link 
           to={user?.role === 'Student' ? '/student/dashboard' : user?.role === 'Admin' ? '/admin/dashboard' : '/department/dashboard'} 
-          className="text-primary text-decoration-none fs-7 fw-semibold"
+          className="text-primary text-decoration-none fs-7 fw-bold"
         >
           <i className="bi bi-arrow-left me-1"></i> Back to Workspace
         </Link>
       </div>
 
-      <div className="row">
+      {actionError && (
+        <div className="alert alert-danger border-0 bg-danger bg-opacity-10 text-danger rounded-3 p-3 mb-4 fs-7">
+          <i className="bi bi-exclamation-triangle-fill me-2"></i> {actionError}
+        </div>
+      )}
+
+      {actionSuccess && (
+        <div className="alert alert-success border-0 bg-success bg-opacity-10 text-success rounded-3 p-3 mb-4 fs-7">
+          <i className="bi bi-check-circle-fill me-2"></i> {actionSuccess}
+        </div>
+      )}
+
+      <div className="row g-4">
         {/* Left Column: Complaint Details */}
-        <div className="col-lg-7 mb-4">
-          <div className="glass-card p-4 h-100">
+        <div className="col-lg-7">
+          <div className="glass-card p-4 bg-white">
             <div className="d-flex justify-content-between align-items-start mb-3">
               <div>
-                <span className="text-primary fw-bold fs-6">Grievance Ticket #{complaint.id}</span>
-                <h2 className="text-white mt-1 mb-2 font-heading">{complaint.title}</h2>
+                <span className="text-primary fw-bold fs-7">Grievance Reference #{complaint.complaintId}</span>
+                <h3 className="text-dark font-heading mt-1 mb-2 fs-4">{complaint.title}</h3>
                 <div className="d-flex flex-wrap gap-2 align-items-center">
                   <span className="badge bg-secondary">{complaint.category}</span>
                   <span className={`badge ${
@@ -205,6 +263,7 @@ const ComplaintDetails = () => {
               </div>
               <span className={`badge badge-status badge-status-${
                 complaint.status === 'Pending' ? 'pending' :
+                complaint.status === 'Under Review' ? 'review' :
                 complaint.status === 'Assigned' ? 'assigned' :
                 complaint.status === 'In Progress' ? 'progress' :
                 complaint.status === 'Resolved' ? 'resolved' : 'closed'
@@ -213,29 +272,29 @@ const ComplaintDetails = () => {
               </span>
             </div>
 
-            {/* Meta values */}
-            <div className="row bg-dark bg-opacity-40 rounded-3 p-3 g-3 mb-4">
+            {/* Profile Meta Cards */}
+            <div className="row bg-light rounded-3 p-3 g-3 mb-4 border">
               <div className="col-6 col-sm-4">
                 <span className="text-muted d-block fs-8 text-uppercase">Filed By</span>
-                <strong className="text-light">{complaint.student_name}</strong>
+                <strong className="text-dark fs-7">{complaint.studentName}</strong>
               </div>
               <div className="col-6 col-sm-4">
-                <span className="text-muted d-block fs-8 text-uppercase">Department</span>
-                <strong className="text-light">{complaint.department_name || 'Awaiting Routing'}</strong>
+                <span className="text-muted d-block fs-8 text-uppercase">Department Route</span>
+                <strong className="text-dark fs-7">{complaint.department || 'Unassigned'}</strong>
               </div>
               <div className="col-12 col-sm-4">
                 <span className="text-muted d-block fs-8 text-uppercase">Filed Date</span>
-                <strong className="text-light">{new Date(complaint.created_at).toLocaleString()}</strong>
+                <strong className="text-dark fs-7">{new Date(complaint.createdAt).toLocaleString()}</strong>
               </div>
               {user?.role !== 'Student' && (
                 <>
                   <div className="col-6 col-sm-4">
                     <span className="text-muted d-block fs-8 text-uppercase">Student Email</span>
-                    <a href={`mailto:${complaint.student_email}`} className="text-primary text-decoration-none">{complaint.student_email}</a>
+                    <a href={`mailto:${complaint.studentEmail}`} className="text-primary text-decoration-none fs-7">{complaint.studentEmail}</a>
                   </div>
                   <div className="col-6 col-sm-4">
                     <span className="text-muted d-block fs-8 text-uppercase">Student Phone</span>
-                    <strong className="text-light">{complaint.student_phone || 'N/A'}</strong>
+                    <strong className="text-dark fs-7">{complaint.studentPhone || 'N/A'}</strong>
                   </div>
                 </>
               )}
@@ -243,46 +302,51 @@ const ComplaintDetails = () => {
 
             {/* Description */}
             <div className="mb-4">
-              <h5 className="text-white mb-2">Detailed Description</h5>
-              <p className="text-muted fs-7 bg-dark bg-opacity-20 p-3 rounded-3 border border-secondary" style={{ whiteSpace: 'pre-wrap' }}>
+              <h5 className="text-dark mb-2 font-heading fs-6">Detailed Description</h5>
+              <div className="text-muted fs-7 bg-light p-3 rounded-3 border" style={{ whiteSpace: 'pre-wrap' }}>
                 {complaint.description}
-              </p>
+              </div>
             </div>
 
-            {/* Evidence File */}
-            {complaint.evidence_url && (
+            {/* Evidence attachment */}
+            {complaint.attachmentUrl && (
               <div className="mb-4">
-                <h5 className="text-white mb-2">Evidence Attachment</h5>
-                <div className="glass-card p-3 d-flex align-items-center justify-content-between border-secondary">
+                <h5 className="text-dark mb-2 font-heading fs-6">Evidence Attachment</h5>
+                <div className="glass-card p-3 d-flex align-items-center justify-content-between border bg-light bg-opacity-35">
                   <div className="d-flex align-items-center">
                     <i className="bi bi-file-earmark-check-fill text-primary display-6 me-3"></i>
                     <div>
-                      <span className="text-white d-block fs-7 font-heading">Evidence Attachment Uploaded</span>
+                      <span className="text-dark d-block fs-7 font-heading">Attachment Uploaded</span>
                       <small className="text-muted fs-8">Securely hosted on Amazon S3</small>
                     </div>
                   </div>
-                  <a href={complaint.evidence_url} target="_blank" rel="noreferrer" className="btn btn-outline-primary btn-sm rounded-pill px-3">
-                    <i className="bi bi-download me-1"></i> View Document
+                  <a href={complaint.attachmentUrl} target="_blank" rel="noreferrer" className="btn btn-premium-primary py-1 px-3 fs-8">
+                    <i className="bi bi-eye-fill me-1"></i> View Document
                   </a>
                 </div>
               </div>
             )}
 
-            {/* Role-Based Action Forms */}
-            {actionError && (
-              <div className="alert alert-danger border-0 bg-danger bg-opacity-10 text-danger rounded-3 p-3 fs-8 mb-4">
-                <i className="bi bi-exclamation-triangle-fill me-2"></i> {actionError}
+            {/* Admin remarks text */}
+            {complaint.adminRemarks && (
+              <div className="mb-4 border-top pt-3">
+                <h5 className="text-dark mb-2 font-heading fs-6">Administrator Comments</h5>
+                <div className="text-dark bg-info bg-opacity-10 border border-info border-opacity-30 p-3 rounded-3 fs-7">
+                  {complaint.adminRemarks}
+                </div>
               </div>
             )}
 
+            {/* ROLE-BASED ACTIONS */}
+
             {/* 1. Department Representative Actions */}
             {user?.role === 'Department Representative' && complaint.status !== 'Closed' && (
-              <div className="border-top border-secondary pt-4 mt-4">
-                <h5 className="text-white mb-3">Update Investigation Status</h5>
+              <div className="border-top pt-4 mt-4">
+                <h5 className="text-dark font-heading mb-3 fs-6">Department Redressal Desk</h5>
                 <form onSubmit={handleRepSubmit}>
                   <div className="row g-3 mb-3">
                     <div className="col-md-6">
-                      <label className="form-label text-muted fs-8 text-uppercase">Status State</label>
+                      <label className="form-label text-muted fs-8 text-uppercase fw-bold">Investigation Status</label>
                       <select 
                         className="form-select" 
                         value={repStatus} 
@@ -290,60 +354,59 @@ const ComplaintDetails = () => {
                         disabled={actionLoading}
                       >
                         <option value="In Progress">In Progress (Investigating)</option>
-                        <option value="Resolved">Resolved (Resolution Found)</option>
+                        <option value="Resolved">Resolved (Resolution Posted)</option>
                       </select>
                     </div>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label text-muted fs-8 text-uppercase">Resolution / Remarks Notes *</label>
+                    <label className="form-label text-muted fs-8 text-uppercase fw-bold">Resolution & Actions Taken Remarks *</label>
                     <textarea
                       className="form-control"
                       rows="3"
-                      placeholder="Detail findings, actions taken, or instructions for the student..."
+                      placeholder="Detail findings, investigations, or resolution guidelines for the student..."
                       value={repRemarks}
                       onChange={(e) => setRepRemarks(e.target.value)}
                       disabled={actionLoading}
                       required
                     ></textarea>
                   </div>
-                  <button type="submit" className="btn btn-premium-primary btn-sm" disabled={actionLoading}>
+                  <button type="submit" className="btn btn-premium-primary btn-sm px-4" disabled={actionLoading}>
                     {actionLoading && <span className="spinner-border spinner-border-sm me-2"></span>}
-                    Submit Findings
+                    Submit Actions Update
                   </button>
                 </form>
               </div>
             )}
 
-            {/* 2. Administrator Actions */}
+            {/* 2. Admin Desk Actions */}
             {user?.role === 'Admin' && (
-              <div className="border-top border-secondary pt-4 mt-4">
-                <h5 className="text-white mb-3">Administrator Control Desk</h5>
+              <div className="border-top pt-4 mt-4">
+                <h5 className="text-dark font-heading mb-3 fs-6">Administrative Control Workspace</h5>
                 
-                {/* Tabbed Action Layout */}
-                <div className="accordion accordion-dark" id="adminActionsAccordion">
+                <div className="accordion" id="adminActionsAccordion">
                   
                   {/* Action 1: Routing & Assignment */}
-                  <div className="accordion-item bg-transparent border-secondary mb-2 rounded-3">
+                  <div className="accordion-item bg-transparent border-light mb-2 rounded-3 border">
                     <h2 className="accordion-header" id="headingAssign">
-                      <button className="accordion-button collapsed bg-dark bg-opacity-50 text-white border-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAssign">
-                        <i className="bi bi-signpost-split me-2 text-primary"></i> Assign Department Route
+                      <button className="accordion-button collapsed bg-light text-dark fs-7 fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAssign">
+                        <i className="bi bi-signpost-split-fill me-2 text-primary"></i> Route Department & Priority
                       </button>
                     </h2>
                     <div id="collapseAssign" className="accordion-collapse collapse" data-bs-parent="#adminActionsAccordion">
-                      <div className="accordion-body bg-dark bg-opacity-20">
+                      <div className="accordion-body bg-light bg-opacity-30">
                         <form onSubmit={handleAdminAssign}>
                           <div className="row g-3 mb-3">
                             <div className="col-md-6">
-                              <label className="form-label text-muted fs-8 text-uppercase">Target Department</label>
+                              <label className="form-label text-muted fs-8 text-uppercase fw-bold">Target Department Route</label>
                               <select className="form-select" value={adminDeptId} onChange={(e) => setAdminDeptId(e.target.value)} required>
-                                <option value="">-- Choose Department --</option>
+                                <option value="">-- Select Route --</option>
                                 {departments.map(d => (
                                   <option value={d.id} key={d.id}>{d.name}</option>
                                 ))}
                               </select>
                             </div>
                             <div className="col-md-6">
-                              <label className="form-label text-muted fs-8 text-uppercase">Reset Priority</label>
+                              <label className="form-label text-muted fs-8 text-uppercase fw-bold">Priority Severity</label>
                               <select className="form-select" value={adminPriority} onChange={(e) => setAdminPriority(e.target.value)}>
                                 <option value="Low">Low</option>
                                 <option value="Medium">Medium</option>
@@ -352,80 +415,79 @@ const ComplaintDetails = () => {
                               </select>
                             </div>
                           </div>
-                          <button type="submit" className="btn btn-premium-primary btn-sm" disabled={actionLoading}>
-                            Confirm Department Assignment
+                          <button type="submit" className="btn btn-premium-primary btn-sm px-4" disabled={actionLoading}>
+                            Apply Route Parameters
                           </button>
                         </form>
                       </div>
                     </div>
                   </div>
 
-                  {/* Action 2: Escalations */}
-                  <div className="accordion-item bg-transparent border-secondary mb-2 rounded-3">
-                    <h2 className="accordion-header" id="headingEscalate">
-                      <button className="accordion-button collapsed bg-dark bg-opacity-50 text-white border-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEscalate">
-                        <i className="bi bi-arrow-up-circle me-2 text-warning"></i> Escalate Ticket Severity
+                  {/* Action 2: Unified Status Update */}
+                  <div className="accordion-item bg-transparent border-light mb-2 rounded-3 border">
+                    <h2 className="accordion-header" id="headingStatus">
+                      <button className="accordion-button collapsed bg-light text-dark fs-7 fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStatus">
+                        <i className="bi bi-exclamation-triangle-fill me-2 text-warning"></i> Audit Status Transition
                       </button>
                     </h2>
-                    <div id="collapseEscalate" className="accordion-collapse collapse" data-bs-parent="#adminActionsAccordion">
-                      <div className="accordion-body bg-dark bg-opacity-20">
-                        <form onSubmit={handleAdminEscalate}>
+                    <div id="collapseStatus" className="accordion-collapse collapse" data-bs-parent="#adminActionsAccordion">
+                      <div className="accordion-body bg-light bg-opacity-30">
+                        <form onSubmit={handleAdminStatusUpdate}>
                           <div className="mb-3">
-                            <label className="form-label text-muted fs-8 text-uppercase">New Severity Priority</label>
-                            <select className="form-select mb-3" value={adminPriority} onChange={(e) => setAdminPriority(e.target.value)}>
-                              <option value="Low">Low</option>
-                              <option value="Medium">Medium</option>
-                              <option value="High">High</option>
-                              <option value="Critical">Critical</option>
+                            <label className="form-label text-muted fs-8 text-uppercase fw-bold">Set State</label>
+                            <select className="form-select mb-3" value={adminStatus} onChange={(e) => setAdminStatus(e.target.value)}>
+                              <option value="Pending">Pending</option>
+                              <option value="Under Review">Under Review</option>
+                              <option value="Assigned">Assigned</option>
+                              <option value="In Progress">In Progress</option>
+                              <option value="Resolved">Resolved</option>
+                              <option value="Closed">Closed</option>
                             </select>
-                            <label className="form-label text-muted fs-8 text-uppercase">Escalation Justification *</label>
+                            <label className="form-label text-muted fs-8 text-uppercase fw-bold">Status Update Remarks / Audit Trail Entry *</label>
                             <textarea 
                               className="form-control" 
                               rows="2" 
-                              placeholder="Reasoning for setting new severity level..."
-                              value={adminRemarks}
-                              onChange={(e) => setAdminRemarks(e.target.value)}
+                              placeholder="Justification or actions taken detail for this status shift..."
+                              value={adminStatusRemarks}
+                              onChange={(e) => setAdminStatusRemarks(e.target.value)}
                               required
                             ></textarea>
                           </div>
-                          <button type="submit" className="btn btn-warning btn-sm fw-bold" disabled={actionLoading}>
-                            Escalate Priority Level
+                          <button type="submit" className="btn btn-premium-primary btn-sm px-4" disabled={actionLoading}>
+                            Execute Status Change
                           </button>
                         </form>
                       </div>
                     </div>
                   </div>
 
-                  {/* Action 3: Closures */}
-                  {complaint.status !== 'Closed' && (
-                    <div className="accordion-item bg-transparent border-secondary mb-2 rounded-3">
-                      <h2 className="accordion-header" id="headingClose">
-                        <button className="accordion-button collapsed bg-dark bg-opacity-50 text-white border-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseClose">
-                          <i className="bi bi-x-circle me-2 text-danger"></i> Formal Complaint Closure
-                        </button>
-                      </h2>
-                      <div id="collapseClose" className="accordion-collapse collapse" data-bs-parent="#adminActionsAccordion">
-                        <div className="accordion-body bg-dark bg-opacity-20">
-                          <form onSubmit={handleAdminClose}>
-                            <div className="mb-3">
-                              <label className="form-label text-muted fs-8 text-uppercase">Closure Audit Summary *</label>
-                              <textarea 
-                                className="form-control" 
-                                rows="3" 
-                                placeholder="Formal notes stating why this grievance is being closed. This will be sent to the student..."
-                                value={adminRemarks}
-                                onChange={(e) => setAdminRemarks(e.target.value)}
-                                required
-                              ></textarea>
-                            </div>
-                            <button type="submit" className="btn btn-danger btn-sm fw-bold" disabled={actionLoading}>
-                              Close Ticket Officially
-                            </button>
-                          </form>
-                        </div>
+                  {/* Action 3: Comments & Remarks */}
+                  <div className="accordion-item bg-transparent border-light mb-2 rounded-3 border">
+                    <h2 className="accordion-header" id="headingRemarks">
+                      <button className="accordion-button collapsed bg-light text-dark fs-7 fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRemarks">
+                        <i className="bi bi-chat-left-text-fill me-2 text-info"></i> Edit Portal Comments
+                      </button>
+                    </h2>
+                    <div id="collapseRemarks" className="accordion-collapse collapse" data-bs-parent="#adminActionsAccordion">
+                      <div className="accordion-body bg-light bg-opacity-30">
+                        <form onSubmit={handleAdminRemarksSubmit}>
+                          <div className="mb-3">
+                            <label className="form-label text-muted fs-8 text-uppercase fw-bold">Admin Remarks Comments</label>
+                            <textarea 
+                              className="form-control" 
+                              rows="3" 
+                              placeholder="Write a formal comment for student reference..."
+                              value={adminRemarksState}
+                              onChange={(e) => setAdminRemarksState(e.target.value)}
+                            ></textarea>
+                          </div>
+                          <button type="submit" className="btn btn-premium-primary btn-sm px-4" disabled={actionLoading}>
+                            Save Comments
+                          </button>
+                        </form>
                       </div>
                     </div>
-                  )}
+                  </div>
 
                 </div>
               </div>
@@ -434,33 +496,33 @@ const ComplaintDetails = () => {
           </div>
         </div>
 
-        {/* Right Column: Update Timeline Log */}
+        {/* Right Column: Timeline Log */}
         <div className="col-lg-5">
-          <div className="glass-card p-4 h-100">
-            <h4 className="text-white mb-4">Grievance Audit Trail</h4>
+          <div className="glass-card p-4 bg-white h-100">
+            <h4 className="text-dark font-heading mb-4 fs-6">Grievance Audit Trail History</h4>
 
             {updates.length === 0 ? (
-              <p className="text-muted fs-7">No timeline remarks generated yet.</p>
+              <p className="text-muted fs-7">No audits generated.</p>
             ) : (
               <div className="timeline-trail ps-3 ms-2">
-                {updates.map((u, idx) => (
-                  <div key={u.id} className={`timeline-item ${u.status_to === 'Closed' ? 'timeline-item-closed' : u.status_to === 'Resolved' ? 'timeline-item-resolved' : ''}`}>
+                {updates.map((u) => (
+                  <div key={u.id} className={`timeline-item ${u.statusTo === 'Closed' ? 'timeline-item-closed' : u.statusTo === 'Resolved' ? 'timeline-item-resolved' : ''}`}>
                     <div className="timeline-marker"></div>
                     <div className="mb-1 d-flex flex-wrap align-items-center justify-content-between">
                       <span className="badge bg-secondary fs-8">
-                        {u.status_from === u.status_to ? u.status_to : `${u.status_from} → ${u.status_to}`}
+                        {u.statusFrom === u.statusTo ? u.statusTo : `${u.statusFrom} → ${u.statusTo}`}
                       </span>
                       <small className="text-muted fs-8">
-                        {new Date(u.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(u.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </small>
                     </div>
                     
-                    <div className="bg-dark bg-opacity-40 p-3 rounded border border-secondary">
-                      <div className="fs-7 text-white mb-1" style={{ whiteSpace: 'pre-wrap' }}>
+                    <div className="bg-light p-3 rounded border">
+                      <div className="fs-7 text-dark mb-1" style={{ whiteSpace: 'pre-wrap' }}>
                         "{u.remarks}"
                       </div>
-                      <div className="text-primary text-end fs-8 fw-semibold">
-                        — {u.updater_name} ({u.updater_role})
+                      <div className="text-primary text-end fs-8 fw-bold">
+                        — {u.updaterName} ({u.updaterRole})
                       </div>
                     </div>
                   </div>
