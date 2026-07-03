@@ -1,0 +1,6 @@
+/* Reset styling. All custom portal styles are implemented in App.css */
+html, body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
