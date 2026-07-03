@@ -1,8 +1,25 @@
 import axios from 'axios';
 
+// Determine backend URL dynamically based on frontend origin if not provided via environment variables.
+const getBaseURL = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  const { protocol, hostname, port } = window.location;
+  // If the app is run from a standard port or behind a reverse proxy (e.g. Nginx),
+  // we route requests to the relative path /api
+  if (port === '' || port === '80' || port === '443') {
+    return '/api';
+  }
+  
+  // Otherwise, default to port 5000 on the same host (standard development setup)
+  return `${protocol}//${hostname}:5000/api`;
+};
+
 // Create API client pointing to the backend Express server
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json'
   }
