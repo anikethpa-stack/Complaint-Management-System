@@ -1,8 +1,10 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const db = require('../config/db.config');
 require('dotenv').config();
 
+const googleClient = new OAuth2Client();
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_123456789';
 
 /**
@@ -142,18 +144,23 @@ exports.googleLogin = async (req, res) => {
   try {
     let email, name;
 
-    // Decode Google JWT Token (safe decode logic for local/simulation compatibility)
-    const parts = credential.split('.');
-    if (parts.length === 3) {
-      const payloadStr = Buffer.from(parts[1], 'base64').toString('utf-8');
-      const payload = JSON.parse(payloadStr);
+    // Cryptographically verify Google JWT Token
+    try {
+      const googleClientId = process.env.GOOGLE_CLIENT_ID;
+      if (!googleClientId || googleClientId.trim() === '' || googleClientId.startsWith('your_google_client_id')) {
+        throw new Error('Google Sign-In is not configured on the server.');
+      }
+
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: googleClientId
+      });
+      const payload = ticket.getPayload();
       email = payload.email;
       name = payload.name;
-    } else {
-      // Simulation payload fallback for quick testing
-      const parsedSim = JSON.parse(credential);
-      email = parsedSim.email;
-      name = parsedSim.name;
+    } catch (verifyError) {
+      console.error('Google ID Token verification failed:', verifyError.message);
+      return res.status(401).json({ error: 'Google authentication failed: ' + verifyError.message });
     }
 
     if (!email) {
