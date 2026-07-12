@@ -10,13 +10,6 @@ const Home = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeStage, setActiveStage] = useState(0);
 
-  // If user is already authenticated, redirect them to their dashboard
-  if (user) {
-    if (user.role === 'Student') return <Navigate to="/student/dashboard" replace />;
-    if (user.role === 'Department Representative') return <Navigate to="/department/dashboard" replace />;
-    if (user.role === 'Admin') return <Navigate to="/admin/dashboard" replace />;
-  }
-
   // Smooth scroll handler
   const handleScrollTo = (id) => {
     setMobileMenuOpen(false);
@@ -84,9 +77,15 @@ const Home = () => {
           </div>
 
           <div className="d-flex align-items-center gap-2">
-            <Link to="/login" className="btn landing-navbar-btn text-decoration-none">
-              <i className="bi bi-box-arrow-in-right me-1"></i> Login Dashboard
-            </Link>
+            {user ? (
+              <Link to={user.role === 'Student' ? '/student/dashboard' : user.role === 'Admin' ? '/admin/dashboard' : '/department/dashboard'} className="btn landing-navbar-btn text-decoration-none">
+                <i className="bi bi-speedometer2 me-1"></i> Go to Dashboard
+              </Link>
+            ) : (
+              <Link to="/login" className="btn landing-navbar-btn text-decoration-none">
+                <i className="bi bi-box-arrow-in-right me-1"></i> Login Dashboard
+              </Link>
+            )}
             
             {/* Mobile Hamburger toggle */}
             <button 
@@ -118,73 +117,109 @@ const Home = () => {
       <div className="soft-blur-overlay-right"></div>
 
       {/* Hero Section */}
-      <div id="hero" className="container py-5 mt-3">
+      <div id="hero" className="container py-5 mt-4">
         <div className="row align-items-center justify-content-center py-4">
           
-          {/* Left Column: Interactive Mockup illustration */}
+          {/* Left Column: Premium Interactive Mockup illustration */}
           <div className="col-lg-6 mb-5 mb-lg-0 order-2 order-lg-1">
             <div className="hero-mockup-wrapper">
-              <div className="hero-mockup-frame p-3 bg-white">
-                <div className="border-bottom pb-2 mb-3 d-flex align-items-center gap-1">
-                  <div className="bg-danger rounded-circle" style={{ width: '8px', height: '8px' }}></div>
-                  <div className="bg-warning rounded-circle" style={{ width: '8px', height: '8px' }}></div>
-                  <div className="bg-success rounded-circle" style={{ width: '8px', height: '8px' }}></div>
-                  <div className="ms-2 bg-light px-3 py-1 rounded text-muted" style={{ fontSize: '9px', width: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    edugrievance.university.edu/admin/dashboard
+              <div className="hero-mockup-frame p-4">
+                <div className="border-bottom border-light-subtle pb-3 mb-3 d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-1.5">
+                    <div className="bg-danger rounded-circle" style={{ width: '9px', height: '9px' }}></div>
+                    <div className="bg-warning rounded-circle" style={{ width: '9px', height: '9px' }}></div>
+                    <div className="bg-success rounded-circle" style={{ width: '9px', height: '9px' }}></div>
+                    <div className="ms-2 bg-light bg-opacity-75 px-3 py-1 rounded-pill text-muted font-monospace border border-light-subtle" style={{ fontSize: '8.5px', width: '230px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      edugrievance.university.edu/desk
+                    </div>
+                  </div>
+                  <div className="d-flex align-items-center gap-1.5 fs-9 text-success fw-bold bg-success bg-opacity-10 px-2.5 py-1 rounded-pill border border-success border-opacity-10">
+                    <span className="rounded-circle bg-success d-inline-block animate-pulse" style={{ width: '6px', height: '6px' }}></span>
+                    Live Engine
                   </div>
                 </div>
 
                 {/* Dashboard mock layout */}
-                <div className="row g-2" style={{ pointerEvents: 'none' }}>
+                <div className="row g-3" style={{ pointerEvents: 'none' }}>
                   <div className="col-4">
-                    <div className="bg-light p-2 rounded text-center border">
-                      <small className="d-block text-muted" style={{ fontSize: '9px' }}>Total Complaints</small>
-                      <strong className="text-dark font-heading fs-6">24</strong>
-                    </div>
-                  </div>
-                  <div className="col-4">
-                    <div className="bg-light p-2 rounded text-center border" style={{ borderColor: 'var(--color-primary)' }}>
-                      <small className="d-block text-muted" style={{ fontSize: '9px' }}>Under Review</small>
-                      <strong className="text-primary font-heading fs-6">6</strong>
+                    <div className="bg-white p-3 rounded-4 text-center border border-light-subtle shadow-sm">
+                      <small className="d-block text-muted mb-1 fs-9 text-uppercase tracking-wider">Total Complaints</small>
+                      <strong className="text-dark font-heading fs-5 fw-extrabold hero-gradient">24</strong>
                     </div>
                   </div>
                   <div className="col-4">
-                    <div className="bg-light p-2 rounded text-center border">
-                      <small className="d-block text-muted" style={{ fontSize: '9px' }}>Resolved</small>
-                      <strong className="text-success font-heading fs-6">12</strong>
+                    <div className="bg-white p-3 rounded-4 text-center border border-light-subtle shadow-sm">
+                      <small className="d-block text-muted mb-1 fs-9 text-uppercase tracking-wider">Under Review</small>
+                      <strong className="text-warning font-heading fs-5 fw-extrabold">6</strong>
+                    </div>
+                  </div>
+                  <div className="col-4">
+                    <div className="bg-white p-3 rounded-4 text-center border border-light-subtle shadow-sm">
+                      <small className="d-block text-muted mb-1 fs-9 text-uppercase tracking-wider">Resolved</small>
+                      <strong className="text-success font-heading fs-5 fw-extrabold">18</strong>
                     </div>
                   </div>
 
-                  <div className="col-12 mt-2">
-                    <div className="border rounded p-2 bg-light bg-opacity-30">
-                      <small className="fw-semibold text-dark d-block mb-1" style={{ fontSize: '10px' }}>Grievance Pipeline Flow</small>
-                      <div className="d-flex align-items-center justify-content-between p-1 bg-white border rounded" style={{ fontSize: '9px' }}>
-                        <span>Student (File)</span>
-                        <i className="bi bi-arrow-right text-primary"></i>
-                        <span>Admin (Review)</span>
-                        <i className="bi bi-arrow-right text-primary"></i>
-                        <span>Dept Representative (Action)</span>
+                  {/* Redressal Velocity Graph Mockup */}
+                  <div className="col-12">
+                    <div className="border border-light-subtle rounded-4 p-3 bg-white shadow-sm">
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <small className="fw-bold text-dark fs-8">Grievance Redressal Velocity</small>
+                        <span className="text-primary fs-9 fw-semibold">Avg. 1.8 Days</span>
+                      </div>
+                      
+                      {/* Flex Bar Chart */}
+                      <div className="d-flex align-items-end justify-content-between pt-2 px-2" style={{ height: '70px' }}>
+                        <div className="d-flex flex-column align-items-center gap-1">
+                          <div className="rounded-top-pill bg-light bg-opacity-75" style={{ height: '24px', width: '28px', border: '1px solid #e2e8f0' }}></div>
+                          <span className="text-muted font-monospace" style={{ fontSize: '8px' }}>Mon</span>
+                        </div>
+                        <div className="d-flex flex-column align-items-center gap-1">
+                          <div className="rounded-top-pill bg-light bg-opacity-75" style={{ height: '36px', width: '28px', border: '1px solid #e2e8f0' }}></div>
+                          <span className="text-muted font-monospace" style={{ fontSize: '8px' }}>Tue</span>
+                        </div>
+                        <div className="d-flex flex-column align-items-center gap-1">
+                          <div className="rounded-top-pill bg-primary bg-opacity-15" style={{ height: '52px', width: '28px', border: '1.5px dashed #4db6b8' }}></div>
+                          <span className="text-muted font-monospace" style={{ fontSize: '8px' }}>Wed</span>
+                        </div>
+                        <div className="d-flex flex-column align-items-center gap-1">
+                          <div className="rounded-top-pill" style={{ height: '44px', width: '28px', background: 'linear-gradient(to top, #1f4e52, #4db6b8)' }}></div>
+                          <span className="text-muted font-monospace" style={{ fontSize: '8px' }}>Thu</span>
+                        </div>
+                        <div className="d-flex flex-column align-items-center gap-1">
+                          <div className="rounded-top-pill" style={{ height: '58px', width: '28px', background: 'linear-gradient(to top, #1f4e52, #4db6b8)' }}></div>
+                          <span className="text-muted font-monospace" style={{ fontSize: '8px' }}>Fri</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="col-12 mt-2">
-                    <div className="border rounded p-2 bg-white">
-                      <small className="fw-semibold text-dark d-block mb-1" style={{ fontSize: '10px' }}>Active Department Distribution</small>
-                      <div className="d-flex align-items-center justify-content-between mb-1" style={{ fontSize: '8px' }}>
-                        <span>Academic</span>
-                        <span className="fw-bold">45%</span>
+                  {/* Active Channels Progress */}
+                  <div className="col-12 mt-1">
+                    <div className="border border-light-subtle rounded-4 p-3 bg-white shadow-sm">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <small className="fw-bold text-dark fs-8">Active Redressal Boards</small>
+                        <span className="badge bg-light text-secondary border border-light-subtle fs-9 font-monospace">4 Boards</span>
                       </div>
-                      <div className="custom-progress-container mb-2" style={{ height: '6px' }}>
-                        <div className="custom-progress-bar" style={{ width: '45%' }}></div>
+                      
+                      <div className="mb-2">
+                        <div className="d-flex align-items-center justify-content-between mb-1" style={{ fontSize: '8.5px' }}>
+                          <span className="text-secondary fw-medium">Academic Board</span>
+                          <span className="fw-bold text-primary">85%</span>
+                        </div>
+                        <div className="custom-progress-container">
+                          <div className="custom-progress-bar" style={{ width: '85%' }}></div>
+                        </div>
                       </div>
 
-                      <div className="d-flex align-items-center justify-content-between mb-1" style={{ fontSize: '8px' }}>
-                        <span>Infrastructure</span>
-                        <span className="fw-bold">30%</span>
-                      </div>
-                      <div className="custom-progress-container" style={{ height: '6px' }}>
-                        <div className="custom-progress-bar" style={{ width: '30%' }}></div>
+                      <div>
+                        <div className="d-flex align-items-center justify-content-between mb-1" style={{ fontSize: '8.5px' }}>
+                          <span className="text-secondary fw-medium">Infrastructure & Amenities</span>
+                          <span className="fw-bold text-primary">60%</span>
+                        </div>
+                        <div className="custom-progress-container">
+                          <div className="custom-progress-bar" style={{ width: '60%' }}></div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -194,25 +229,32 @@ const Home = () => {
           </div>
 
           {/* Right Column: Title and Subtitle */}
-          <div className="col-lg-6 ps-lg-5 order-1 order-lg-2 mb-5 mb-lg-0 text-center text-lg-start">
-            <div className="badge border px-3 py-2 rounded-pill text-uppercase tracking-wider mb-3 fs-8 fw-semibold" 
-                 style={{ color: 'var(--color-secondary)', borderColor: 'var(--color-primary)', backgroundColor: 'var(--bg-secondary)' }}>
-              <i className="bi bi-cloud-check-fill me-1"></i> University Portal Redefined
+          <div className="col-lg-6 ps-lg-5 order-1 order-lg-2 mb-5 mb-lg-0 text-center text-lg-start animate-fade-in">
+            <div className="badge-hero mb-3">
+              <i className="bi bi-cloud-check-fill text-primary"></i> HEI Secure Portal Sandbox
             </div>
-            <h1 className="display-5 fw-extrabold mb-3 font-heading text-dark">
+            <h1 className="display-5 fw-extrabold mb-3 font-heading text-dark" style={{ lineHeight: '1.2' }}>
               Higher Education Institution<br />
               <span className="hero-gradient">Grievance Management System</span>
             </h1>
-            <p className="lead text-muted mb-4 fs-6">
-              A centralized cloud-based platform that enables students to submit grievances, track complaint progress, and receive transparent updates throughout the resolution process.
+            <p className="lead text-muted mb-4 fs-7" style={{ opacity: 0.9 }}>
+              A centralized, cloud-enabled sandbox environment built to streamline grievance logging, automate department assignments, and deliver transparent updates throughout the resolution lifecycle.
             </p>
             <div className="d-flex flex-column flex-sm-row gap-3 justify-content-center justify-content-lg-start">
-              <Link to="/login" className="btn btn-premium-primary text-center px-4 py-3">
-                <i className="bi bi-box-arrow-in-right me-2"></i> Login Dashboard
-              </Link>
-              <Link to="/register" className="btn btn-premium-secondary text-center px-4 py-3">
-                <i className="bi bi-file-earmark-plus me-2"></i> Register Complaint
-              </Link>
+              {user ? (
+                <Link to={user.role === 'Student' ? '/student/dashboard' : user.role === 'Admin' ? '/admin/dashboard' : '/department/dashboard'} className="btn btn-premium-primary text-center px-4 py-3">
+                  <i className="bi bi-speedometer2 me-2"></i> Go to Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link to="/login" className="btn btn-premium-primary text-center px-4 py-3">
+                    <i className="bi bi-box-arrow-in-right me-2"></i> Login Dashboard
+                  </Link>
+                  <Link to="/register" className="btn btn-premium-secondary text-center px-4 py-3">
+                    <i className="bi bi-file-earmark-plus me-2"></i> Register Complaint
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

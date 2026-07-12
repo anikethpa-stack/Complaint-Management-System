@@ -69,6 +69,51 @@ const Login = () => {
     }
   }, [isGoogleConfigured]);
 
+  // Listen for message from the Google Sign-in simulation popup
+  useEffect(() => {
+    const handleGoogleMessage = async (event) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data && event.data.type === 'GOOGLE_SIGNIN_SUCCESS') {
+        const { credential } = event.data;
+        setGoogleLoading(true);
+        setError('');
+        const result = await loginWithGoogle(credential);
+        setGoogleLoading(false);
+        if (!result.success) {
+          setError(result.error);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleGoogleMessage);
+    return () => window.removeEventListener('message', handleGoogleMessage);
+  }, [loginWithGoogle]);
+
+  const handleGoogleSignIn = () => {
+    setError('');
+    setGoogleLoading(true);
+
+    const width = 500;
+    const height = 600;
+    const left = window.top.outerWidth / 2 + window.top.screenX - (width / 2);
+    const top = window.top.outerHeight / 2 + window.top.screenY - (height / 2);
+
+    const popup = window.open(
+      '/login/google-simulation',
+      'google_signin_popup',
+      `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=no`
+    );
+
+    // Track popup closure to stop loading spinner if user closes window manually
+    const popupCheck = setInterval(() => {
+      if (!popup || popup.closed) {
+        clearInterval(popupCheck);
+        setGoogleLoading(false);
+      }
+    }, 1000);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -88,12 +133,14 @@ const Login = () => {
     }
   };
 
+
+
   return (
     <div className="container d-flex align-items-center justify-content-center min-vh-100 py-5">
       <div className="w-100 animate-fade-in" style={{ maxWidth: '480px' }}>
-        <div className="mb-4 text-start">
-          <Link to="/" className="text-dark text-decoration-none fs-7 fw-semibold bg-white p-2 px-3 rounded-pill border shadow-sm d-inline-flex align-items-center">
-            <i className="bi bi-arrow-left me-2 text-primary"></i> Back to Home
+        <div className="mb-3 text-start">
+          <Link to="/" className="text-muted text-decoration-none fs-7 d-inline-flex align-items-center">
+            <i className="bi bi-arrow-left me-1"></i> Back to Home
           </Link>
         </div>
 
@@ -181,6 +228,8 @@ const Login = () => {
           {isGoogleConfigured && (
             <div id="googleSignInDiv" className="w-100 mb-3 d-flex justify-content-center"></div>
           )}
+
+
 
           <div className="text-center mt-3 border-top border-light pt-3">
             <span className="text-muted fs-7">New student? </span>
