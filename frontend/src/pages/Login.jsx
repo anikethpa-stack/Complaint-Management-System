@@ -69,40 +69,6 @@ const Login = () => {
     }
   }, [isGoogleConfigured]);
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    setError('');
-    
-    // Simulated Google login prompts for demonstration
-    const simulatedEmail = window.prompt(
-      "Google Account Simulation:\nEnter your Google Email Address to authenticate:\n(Admin emails: anikethpa411@gmail.com, abdullah2003shoaib@gmail.com, srikanthsriko@gmail.com)",
-      "anikethpa411@gmail.com"
-    );
-    
-    if (!simulatedEmail) {
-      setGoogleLoading(false);
-      return;
-    }
-    
-    if (!simulatedEmail.includes('@')) {
-      setError('Please provide a valid Google email address.');
-      setGoogleLoading(false);
-      return;
-    }
-
-    const mockCredential = JSON.stringify({
-      email: simulatedEmail.trim(),
-      name: simulatedEmail.split('@')[0].split('.')[0].replace(/^\w/, (c) => c.toUpperCase()) + ' ' + (simulatedEmail.split('@')[0].split('.')[1] || 'User').replace(/^\w/, (c) => c.toUpperCase())
-    });
-
-    const result = await loginWithGoogle(mockCredential);
-    setGoogleLoading(false);
-    
-    if (!result.success) {
-      setError(result.error);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -122,25 +88,15 @@ const Login = () => {
     }
   };
 
-  // Helper function for quick demo logins
-  const handleQuickLogin = async (demoEmail, demoPassword) => {
-    setError('');
-    setMessage('');
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    
-    setLoading(true);
-    const result = await login(demoEmail, demoPassword);
-    setLoading(false);
-
-    if (!result.success) {
-      setError(result.error);
-    }
-  };
-
   return (
     <div className="container d-flex align-items-center justify-content-center min-vh-100 py-5">
       <div className="w-100 animate-fade-in" style={{ maxWidth: '480px' }}>
+        <div className="mb-4 text-start">
+          <Link to="/" className="text-dark text-decoration-none fs-7 fw-semibold bg-white p-2 px-3 rounded-pill border shadow-sm d-inline-flex align-items-center">
+            <i className="bi bi-arrow-left me-2 text-primary"></i> Back to Home
+          </Link>
+        </div>
+
         <div className="text-center mb-4">
           <Link to="/" className="text-decoration-none">
             <i className="bi bi-shield-fill-check text-primary display-4 glow-text mb-2 d-inline-block"></i>
@@ -221,75 +177,10 @@ const Login = () => {
             </button>
           </form>
 
-          {/* Simulated Google SSO block */}
-          {isGoogleConfigured ? (
+          {/* Google SSO block */}
+          {isGoogleConfigured && (
             <div id="googleSignInDiv" className="w-100 mb-3 d-flex justify-content-center"></div>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-google-signin w-100 mb-3 py-2"
-              onClick={handleGoogleSignIn}
-              disabled={loading || googleLoading}
-            >
-              {googleLoading ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2"></span>
-                  Connecting to Google...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-google me-2 text-danger"></i> Sign In with Google (Simulation)
-                </>
-              )}
-            </button>
           )}
-
-          {/* Quick Demo Logins Panel */}
-          <div className="border-top border-light mt-4 pt-3">
-            <h6 className="text-dark font-heading fw-bold text-center mb-3">
-              <i className="bi bi-shield-lock-fill text-primary"></i> Administrative Demonstration Console
-            </h6>
-            
-            <div className="d-flex flex-column gap-2">
-              <button 
-                type="button"
-                className="btn btn-outline-info text-start py-2 fs-8"
-                onClick={() => handleQuickLogin('anikethpa411@gmail.com', 'admin123')}
-                disabled={loading}
-              >
-                <i className="bi bi-person-badge-fill me-1 text-primary"></i> Log in as <strong>Aniketh (Admin)</strong>
-              </button>
-              <button 
-                type="button"
-                className="btn btn-outline-info text-start py-2 fs-8"
-                onClick={() => handleQuickLogin('abdullah2003shoaib@gmail.com', 'admin123')}
-                disabled={loading}
-              >
-                <i className="bi bi-person-badge-fill me-1 text-primary"></i> Log in as <strong>Abdullah (Admin)</strong>
-              </button>
-              <button 
-                type="button"
-                className="btn btn-outline-info text-start py-2 fs-8"
-                onClick={() => handleQuickLogin('srikanthsriko@gmail.com', 'admin123')}
-                disabled={loading}
-              >
-                <i className="bi bi-person-badge-fill me-1 text-primary"></i> Log in as <strong>Srikanth (Admin)</strong>
-              </button>
-              
-              <div className="border-top border-light my-2"></div>
-              
-              {/* Attempt with unauthorized admin account */}
-              <button 
-                type="button"
-                className="btn btn-outline-secondary text-start py-2 fs-8 text-danger border-danger border-opacity-25"
-                onClick={() => handleQuickLogin('admin@college.edu', 'admin123')}
-                disabled={loading}
-                title="This email is no longer on the allowed admins list"
-              >
-                <i className="bi bi-exclamation-triangle-fill me-1 text-danger"></i> Try Legacy <strong>admin@college.edu</strong> (Blocks)
-              </button>
-            </div>
-          </div>
 
           <div className="text-center mt-3 border-top border-light pt-3">
             <span className="text-muted fs-7">New student? </span>
