@@ -175,7 +175,7 @@ exports.assignComplaint = async (req, res) => {
         `Regards,\n` +
         `Student Grievance & Complaint Management System`;
       
-      sendNotification(subject, emailBody);
+      sendNotification(subject, emailBody, { email: student.email });
     }
 
     return res.json({
@@ -230,17 +230,16 @@ exports.escalateComplaint = async (req, res) => {
     const studentUser = await db.query('SELECT name, email FROM Users WHERE id = ?', [complaint.student_id]);
     if (studentUser.length > 0) {
       const student = studentUser[0];
-      const subject = `Complaint Escalation Alert: #${complaint_id}`;
+      const subject = `Complaint Review Update: #${complaint_id}`;
       const emailBody = `Dear ${student.name},\n\n` +
-        `Your complaint priority has been escalated by the administrator.\n\n` +
+        `Your complaint status has been updated by the administrator.\n\n` +
         `Complaint Reference: #${complaint_id}\n` +
         `Title: ${complaint.title}\n` +
-        `New Priority Level: ${priority}\n` +
         `Administrator Remarks: "${remarks}"\n\n` +
         `Regards,\n` +
         `Student Grievance & Complaint Management System`;
       
-      sendNotification(subject, emailBody);
+      sendNotification(subject, emailBody, { email: student.email });
     }
 
     return res.json({
@@ -304,7 +303,7 @@ exports.closeComplaint = async (req, res) => {
         `Regards,\n` +
         `Student Grievance & Complaint Management System`;
       
-      sendNotification(subject, emailBody);
+      sendNotification(subject, emailBody, { email: student.email });
     }
 
     return res.json({
@@ -701,7 +700,7 @@ exports.updateComplaintStatus = async (req, res) => {
         `Regards,\n` +
         `Student Grievance & Complaint Management System`;
       
-      sendNotification(subject, emailBody);
+      sendNotification(subject, emailBody, { email: student.email });
     }
 
     return res.json({
@@ -741,9 +740,9 @@ exports.assignComplaintRoute = async (req, res) => {
     }
     const departmentName = deptList[0].name;
 
-    // Update status to 'Assigned', set department, assigned_by and assigned_date
-    const updateParams = [departmentId, 'Assigned', adminId, departmentName];
-    let updateQuery = 'UPDATE Complaints SET department_id = ?, status = ?, assigned_by = ?, assigned_date = CURRENT_TIMESTAMP, department = ?';
+    // Update status to 'Assigned', set department_id, assigned_by and assigned_date
+    const updateParams = [departmentId, 'Assigned', adminId];
+    let updateQuery = 'UPDATE Complaints SET department_id = ?, status = ?, assigned_by = ?, assigned_date = CURRENT_TIMESTAMP';
 
     if (priority) {
       updateQuery += ', priority = ?';
@@ -788,7 +787,7 @@ exports.assignComplaintRoute = async (req, res) => {
         `Regards,\n` +
         `Student Grievance & Complaint Management System`;
       
-      sendNotification(subject, emailBody);
+      sendNotification(subject, emailBody, { email: student.email });
     }
 
     return res.json({

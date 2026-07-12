@@ -226,7 +226,7 @@ const ComplaintDetails = () => {
       <div className="mb-4">
         <Link 
           to={user?.role === 'Student' ? '/student/dashboard' : user?.role === 'Admin' ? '/admin/dashboard' : '/department/dashboard'} 
-          className="text-primary text-decoration-none fs-7 fw-bold"
+          className="btn btn-premium-secondary py-2 px-3 fs-7 fw-bold"
         >
           <i className="bi bi-arrow-left me-1"></i> Back to Workspace
         </Link>
@@ -312,17 +312,28 @@ const ComplaintDetails = () => {
             {complaint.attachmentUrl && (
               <div className="mb-4">
                 <h5 className="text-dark mb-2 font-heading fs-6">Evidence Attachment</h5>
-                <div className="glass-card p-3 d-flex align-items-center justify-content-between border bg-light bg-opacity-35">
-                  <div className="d-flex align-items-center">
-                    <i className="bi bi-file-earmark-check-fill text-primary display-6 me-3"></i>
-                    <div>
-                      <span className="text-dark d-block fs-7 font-heading">Attachment Uploaded</span>
-                      <small className="text-muted fs-8">Securely hosted on Amazon S3</small>
+                <div className="glass-card p-3 border bg-light bg-opacity-35">
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <div className="d-flex align-items-center">
+                      <i className="bi bi-file-earmark-check-fill text-primary display-6 me-3"></i>
+                      <div>
+                        <span className="text-dark d-block fs-7 font-heading">Attachment Uploaded</span>
+                        <small className="text-muted fs-8">Securely hosted on Amazon S3</small>
+                      </div>
                     </div>
+                    <a href={complaint.attachmentUrl} target="_blank" rel="noreferrer" className="btn btn-premium-primary py-1 px-3 fs-8">
+                      <i className="bi bi-eye-fill me-1"></i> Open In New Tab
+                    </a>
                   </div>
-                  <a href={complaint.attachmentUrl} target="_blank" rel="noreferrer" className="btn btn-premium-primary py-1 px-3 fs-8">
-                    <i className="bi bi-eye-fill me-1"></i> View Document
-                  </a>
+                  {/\.(jpg|jpeg|png|webp|gif|svg)/i.test(complaint.attachmentUrl) && (
+                    <div className="text-center mt-2 border rounded-3 p-2 bg-white" style={{ maxHeight: '350px', overflow: 'hidden' }}>
+                      <img 
+                        src={complaint.attachmentUrl} 
+                        alt="Evidence Attachment Preview" 
+                        style={{ maxWidth: '100%', maxHeight: '330px', objectFit: 'contain' }} 
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}

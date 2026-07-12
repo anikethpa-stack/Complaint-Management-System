@@ -224,27 +224,9 @@ const Login = () => {
             </button>
           </form>
 
-          {/* Simulated Google SSO block */}
-          {isGoogleConfigured ? (
+          {/* Google SSO block */}
+          {isGoogleConfigured && (
             <div id="googleSignInDiv" className="w-100 mb-3 d-flex justify-content-center"></div>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-google-signin w-100 mb-3 py-2"
-              onClick={handleGoogleSignIn}
-              disabled={loading || googleLoading}
-            >
-              {googleLoading ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2"></span>
-                  Connecting to Google...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-google me-2 text-danger"></i> Sign In with Google (Simulation)
-                </>
-              )}
-            </button>
           )}
 
 

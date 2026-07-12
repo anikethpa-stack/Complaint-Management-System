@@ -215,7 +215,7 @@ const Layout = ({ children }) => {
   return (
     <div className="min-vh-100 d-flex flex-column fade-in">
       {/* Top Header Navigation */}
-      <nav className="navbar navbar-expand-lg navbar-dark navbar-custom py-3 px-4 sticky-top">
+      <nav className="navbar navbar-expand-lg navbar-dark navbar-custom py-3 px-4 sticky-top" style={{ zIndex: 1050 }}>
         <div className="container-fluid">
           <Link className="navbar-brand d-flex align-items-center" to="/">
             <i className="bi bi-shield-fill-check text-primary fs-3 me-2"></i>
