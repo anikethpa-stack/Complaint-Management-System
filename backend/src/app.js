@@ -11,7 +11,7 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: '*', // Configure specifically for client domain in production
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
