@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import GoogleSimulation from './pages/GoogleSimulation';
 import StudentDashboard from './pages/StudentDashboard';
 import SubmitComplaint from './pages/SubmitComplaint';
 import ComplaintHistory from './pages/ComplaintHistory';
@@ -25,81 +26,94 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Layout>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+        <Routes>
+          {/* Public Routes - No Layout wrapper */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/login/google-simulation" element={<GoogleSimulation />} />
 
-            {/* Student Protected Routes */}
-            <Route 
-              path="/student/dashboard" 
-              element={
-                <ProtectedRoute allowedRoles={['Student']}>
+          {/* Student Protected Routes - wrapped in Layout */}
+          <Route 
+            path="/student/dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <Layout>
                   <StudentDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/student/submit" 
-              element={
-                <ProtectedRoute allowedRoles={['Student']}>
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/student/submit" 
+            element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <Layout>
                   <SubmitComplaint />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/student/history" 
-              element={
-                <ProtectedRoute allowedRoles={['Student']}>
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/student/history" 
+            element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <Layout>
                   <ComplaintHistory />
-                </ProtectedRoute>
-              } 
-            />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
 
-            {/* Department Representative Protected Routes */}
-            <Route 
-              path="/department/dashboard" 
-              element={
-                <ProtectedRoute allowedRoles={['Department Representative']}>
+          {/* Department Representative Protected Routes */}
+          <Route 
+            path="/department/dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['Department Representative']}>
+                <Layout>
                   <DepartmentDashboard />
-                </ProtectedRoute>
-              } 
-            />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
 
-            {/* Admin Protected Routes */}
-            <Route 
-              path="/admin/dashboard" 
-              element={
-                <ProtectedRoute allowedRoles={['Admin']}>
+          {/* Admin Protected Routes */}
+          <Route 
+            path="/admin/dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <Layout>
                   <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/analytics" 
-              element={
-                <ProtectedRoute allowedRoles={['Admin']}>
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/analytics" 
+            element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <Layout>
                   <AnalyticsDashboard />
-                </ProtectedRoute>
-              } 
-            />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
 
-            {/* Shared Protected Detail Route */}
-            <Route 
-              path="/complaints/:id" 
-              element={
-                <ProtectedRoute allowedRoles={['Student', 'Department Representative', 'Admin']}>
+          {/* Shared Protected Detail Route */}
+          <Route 
+            path="/complaints/:id" 
+            element={
+              <ProtectedRoute allowedRoles={['Student', 'Department Representative', 'Admin']}>
+                <Layout>
                   <ComplaintDetails />
-                </ProtectedRoute>
-              } 
-            />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
 
-            {/* Redirect fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Layout>
+          {/* Redirect fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </AuthProvider>
     </Router>
   );

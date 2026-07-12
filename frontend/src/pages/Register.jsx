@@ -61,9 +61,9 @@ const Register = () => {
   return (
     <div className="container d-flex align-items-center justify-content-center min-vh-100 py-5">
       <div className="w-100" style={{ maxWidth: '480px' }}>
-        <div className="mb-4 text-start">
-          <Link to="/" className="text-dark text-decoration-none fs-7 fw-semibold bg-white p-2 px-3 rounded-pill border shadow-sm d-inline-flex align-items-center">
-            <i className="bi bi-arrow-left me-2 text-primary"></i> Back to Home
+        <div className="mb-3 text-start">
+          <Link to="/" className="text-muted text-decoration-none fs-7 d-inline-flex align-items-center">
+            <i className="bi bi-arrow-left me-1"></i> Back to Home
           </Link>
         </div>
 
