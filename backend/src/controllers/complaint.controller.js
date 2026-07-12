@@ -1,6 +1,6 @@
 const db = require('../config/db.config');
 const { uploadToS3, generatePresignedUrl } = require('../services/s3.service');
-const { sendNotification } = require('../services/sns.service');
+const { subscribeEmail, sendNotification } = require('../services/sns.service');
 
 /**
  * Submit a new complaint
@@ -10,6 +10,7 @@ exports.createComplaint = async (req, res) => {
   const { title, description, category, priority } = req.body;
   const studentId = req.user.id;
   const studentName = req.user.name;
+  const studentEmail = req.user.email;
 
   if (!title || !description || !category) {
     return res.status(400).json({ error: 'Title, description, and category are required.' });
@@ -47,21 +48,49 @@ exports.createComplaint = async (req, res) => {
 
     console.log('Complaint Registered Successfully', { complaintId, studentId, priority: complaintPriority });
 
-    // 4. Send SNS Email notification
+    // Fetch system admins to register subscription
+    const admins = await db.query("SELECT email FROM Users WHERE role = 'Admin'");
+
+    // Set up AWS SNS Subscriptions with filter policies asynchronously
+    subscribeEmail(studentEmail, { email: [studentEmail] });
+    if (admins.length > 0) {
+      for (const admin of admins) {
+        subscribeEmail(admin.email, { role: ['Admin'] });
+      }
+    } else {
+      subscribeEmail('admin@college.edu', { role: ['Admin'] });
+    }
+
+    // 4. Send SNS Email notification to Student (targeted)
     const subject = `New Complaint Registered: #${complaintId}`;
     const emailBody = `Dear ${studentName},\n\n` +
       `Your complaint has been successfully registered in the portal.\n\n` +
       `Complaint Reference: #${complaintId}\n` +
       `Title: ${title}\n` +
       `Category: ${category}\n` +
-      `Priority: ${complaintPriority}\n` +
       `Current Status: Pending\n\n` +
       `You can track the progress of your complaint in your Student Dashboard.\n\n` +
       `Regards,\n` +
       `Student Grievance & Complaint Management System`;
 
-    // Send async and don't block response
-    sendNotification(subject, emailBody);
+    sendNotification(subject, emailBody, { email: studentEmail });
+
+    // 5. Send SNS Email notification to Admin (targeted)
+    const adminSubject = `ALERT: New Complaint Registered: #${complaintId}`;
+    const adminEmailBody = `Dear System Administrator,\n\n` +
+      `A new complaint has been registered in the student grievance portal and requires review.\n\n` +
+      `Complaint Details:\n` +
+      `Reference: #${complaintId}\n` +
+      `Student Name: ${studentName} (${studentEmail})\n` +
+      `Title: ${title}\n` +
+      `Category: ${category}\n` +
+      `Priority (Requested): ${complaintPriority}\n` +
+      `Current Status: Pending\n\n` +
+      `Please log in to the admin dashboard to review, set priority, and assign this complaint.\n\n` +
+      `Regards,\n` +
+      `Student Grievance & Complaint Management System`;
+
+    sendNotification(adminSubject, adminEmailBody, { role: 'Admin' });
 
     let clientEvidenceUrl = null;
     if (evidenceUrl) {
