@@ -123,7 +123,7 @@ exports.updateComplaintStatus = async (req, res) => {
         `Regards,\n` +
         `Student Grievance & Complaint Management System`;
       
-      sendNotification(subject, emailBody);
+      sendNotification(subject, emailBody, { email: student.email });
     }
 
     return res.json({
