@@ -222,6 +222,10 @@ h1, h2, h3, h4, h5, h6 {
   border-color: rgba(77, 182, 184, 0.2);
 }
 
+.sidebar-status-widget .text-muted {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
 /* Loading animations */
 .style-loading {
   background: linear-gradient(135deg, #F5FFFF 0%, #EEFDFD 50%, #F8FFFF 100%);
@@ -344,7 +348,11 @@ body .text-light {
 .text-info { color: var(--color-info) !important; }
 
 .bg-primary { background-color: var(--color-primary) !important; }
-.bg-secondary { background-color: var(--bg-secondary) !important; border: 1px solid var(--border-card); }
+.bg-secondary { 
+  background-color: var(--bg-secondary) !important; 
+  border: 1px solid var(--border-card); 
+  color: var(--color-secondary) !important; 
+}
 .bg-success { background-color: var(--color-success) !important; }
 .bg-warning { background-color: var(--color-warning) !important; }
 .bg-danger { background-color: var(--color-danger) !important; }
@@ -890,4 +898,29 @@ body .landing-wrapper .text-muted {
   height: 100%;
   border-radius: 8px;
   transition: var(--transition-smooth);
+}
+
+/* Secure high-contrast overrides for Bootstrap alerts in environments where bg-opacity-10 is unsupported */
+.alert-danger.bg-opacity-10 {
+  background-color: #fde8e8 !important;
+  color: #9b1c1c !important;
+  border-left: 4px solid #f05252 !important;
+}
+
+.alert-success.bg-opacity-10 {
+  background-color: #def7ec !important;
+  color: #03543f !important;
+  border-left: 4px solid #31c48d !important;
+}
+
+.alert-warning.bg-opacity-10 {
+  background-color: #fef08a !important;
+  color: #713f12 !important;
+  border-left: 4px solid #facc15 !important;
+}
+
+.alert-info.bg-opacity-10 {
+  background-color: #e1f5fe !important;
+  color: #01579b !important;
+  border-left: 4px solid #0288d1 !important;
 }
